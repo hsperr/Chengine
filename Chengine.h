@@ -33,7 +33,9 @@ typedef enum {
     ChError_Arguments,
     ChError_Resources,
     ChError_BrokenFenString,
-    ChError_RepetitionDraw
+    ChError_RepetitionDraw,
+    ChError_NotInTable,
+    Cherror_DepthToLow
 } ChError;
 
 typedef struct PieceInfo{
@@ -71,20 +73,13 @@ typedef struct Properties{
 }Properties;
 
 enum {
-    pawn=0x1,
-    knight=0x2,
-    king=0x3,
-    bishop=0x5,
-    rook=0x6,
-    queen=0x7
+    pawn,
+    knight,
+    king,
+    bishop,
+    rook,
+    queen
 };
-
-
-// & with 0100 determines sliding piece
-// & with 0001 piece can slide diagonally
-// & with 0010 piece can slide vertical/horizontal
-// & with 1000 piece is black or white
-
 
 typedef struct Rights{
     int kingCastlingPossible;
@@ -113,9 +108,9 @@ typedef struct ChessBoard{
     Rights rights[2];
     int enPassantSquare;
     Color colorToPlay;
-    int needToKeepTrackOfCastling;
     MoveList playedMoves;
     int staleMateMoves;
+    u_int64_t zobrist;
 }ChessBoard;
 
 typedef struct Game{
@@ -130,4 +125,9 @@ void printMoveList(MoveList* moveList);
 void printError(ChError hr);
 
 #include "Board.h"
+#include "perft.h"
+#include "NegaScout.h"
+#include "Input.h"
+#include "TranspositionTable.h"
+
 #endif

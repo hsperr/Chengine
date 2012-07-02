@@ -38,7 +38,6 @@ void printMoveList(MoveList* moveList){
         
         printf("%d %s\n",i,charMove);
     }
-    fflush(stdout);
 }
 
 void printError(ChError hr){

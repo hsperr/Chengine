@@ -7,10 +7,7 @@
 //
 
 #include "Chengine.h"
-#include "Board.h"
-#include "perft.h"
-#include "NegaScout.h"
-#include "Input.h"
+
 
 
 int main (int argc, const char * argv[])
@@ -22,7 +19,7 @@ int main (int argc, const char * argv[])
     Game newGame;
     ChError hr;
     
-    newGame.isRunning=1;
+    newGame.isRunning=0;
     newGame.aiPlayer[WHITE].depth=6;
     newGame.aiPlayer[WHITE].timelimit=500;
     newGame.aiPlayer[WHITE].isAi=0;
@@ -47,10 +44,9 @@ int main (int argc, const char * argv[])
 
     
     //TESTING
-    //readFENString(&board, "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1R1K b kq - 1 1");
+    //readFENString(&board, "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1");
     //readFENString(&newGame.board, "2k5/8/8/8/p7/8/8/4K3 b - - 0 1");
-    printBoardE(&newGame.board);
-    
+
    // printBoardE(&board);
    // divide(&board,2);
     
@@ -63,17 +59,31 @@ int main (int argc, const char * argv[])
   
     
     printf("Perfting\n");
-    
+    initTable(67108864, 0x3FFFFFF);
+   // readFENString(&newGame.board, "rnbqkbnr/1ppppppp/p7/1B6/4P3/8/PPPP1PPP/RNBQK1NR b KQkq - 1 2");
+    printBoardE(&newGame.board);
     perft(&newGame.board,1);
     perft(&newGame.board,2);
     perft(&newGame.board,3);
     perft(&newGame.board,4);
-    perft(&newGame.board,5);
-    perft(&newGame.board,6);
-        
+    //perft(&newGame.board,5);
+   // perft(&newGame.board,6);
     
-    
+   // 
 
+    printf("Perfting 1 2 3 4\n");
+    perft_hash(&newGame.board,1);
+    perft_hash(&newGame.board,2);
+    perft_hash(&newGame.board,3);
+    perft_hash(&newGame.board,4);
+    printf("Perfting 5 6 7 8\n");
+    perft_hash(&newGame.board,5);
+    perft_hash(&newGame.board,6);
+    perft_hash(&newGame.board,7);
+    perft_hash(&newGame.board,8);
+    
+    
+freeTable();
     return 0;
 }
 
