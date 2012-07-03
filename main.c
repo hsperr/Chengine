@@ -66,8 +66,8 @@ int main (int argc, const char * argv[])
     perft(&newGame.board,2);
     perft(&newGame.board,3);
     perft(&newGame.board,4);
-    //perft(&newGame.board,5);
-   // perft(&newGame.board,6);
+    perft(&newGame.board,5);
+    //perft(&newGame.board,6);
     
    // 
 
@@ -78,12 +78,14 @@ int main (int argc, const char * argv[])
     perft_hash(&newGame.board,4);
     printf("Perfting 5 6 7 8\n");
     perft_hash(&newGame.board,5);
+    perft_hash(&newGame.board,5);
+
     perft_hash(&newGame.board,6);
     perft_hash(&newGame.board,7);
     perft_hash(&newGame.board,8);
     
     
-freeTable();
+    //freeTable();
     return 0;
 }
 

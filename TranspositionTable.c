@@ -74,7 +74,7 @@ ChError initTable(long size, long inMask){
     for(long i=0;i<size;i++){
         hashTable[i].zobrist=0;
     }
-    indexMask=inMask;
+    indexMask=size;
     
     return ChError_OK;
 
@@ -122,7 +122,7 @@ ChError probe(u_int64_t zobrist, int depth,int* score){
     if(depth==0)
         return ChError_NotInTable;
     
-    long index=zobrist&indexMask;
+    long index=zobrist%indexMask;
     
     TableEntry* entry=&hashTable[index];
     if(!entry)
@@ -161,19 +161,18 @@ ChError updateCastleRightZobrist(u_int64_t* zobrist, int nr){//KQkq
 }
 ChError setEnPassantZobrist(u_int64_t* zobrist, int oldEnPassant, int newEnPassant){
     if(oldEnPassant!=-5){
-    *zobrist^=enPassant[(oldEnPassant&0x0F)];
+        *zobrist^=enPassant[(oldEnPassant&0x0F)];
     }
     if(newEnPassant!=-5){
         *zobrist^=enPassant[(newEnPassant&0x0F)];
     }
     return ChError_OK;
 }
-
 ChError addKeyToTable(u_int64_t zobrist, int depth, int score){
     if(depth==0)
         return ChError_OK;
     
-    u_int64_t index=zobrist&indexMask;
+    u_int64_t index=zobrist%indexMask;
 
     TableEntry* entry=&hashTable[index];
     
@@ -197,7 +196,7 @@ ChError addKeyToTable(u_int64_t zobrist, int depth, int score){
     return ChError_OK;
 }
 
-void freeTable(void){
+void freeTable(){
     if(hashTable)
         free(hashTable);
 }

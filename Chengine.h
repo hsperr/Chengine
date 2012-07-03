@@ -45,6 +45,15 @@ typedef struct PieceInfo{
     int score;
 }PieceInfo;
 
+enum MoveType{
+    NORMAL,
+    PAWNDOUBLE,
+    PROMOTION,
+    ENPASSANT,
+    KINGCASTLE,
+    QUEENCASTLE
+}MoveType;
+
 typedef struct Move{
     int from;
     int to;
@@ -53,6 +62,7 @@ typedef struct Move{
     int previousEnPassantSquare;
     PieceInfo* pieceToSquareIndexTo;//also used for enpassant
     PIECE promote;
+    enum MoveType moveType;
     
     int whiteKingCastlingRights;
     int whiteQueenCastlingRights;
@@ -65,7 +75,7 @@ typedef struct MoveList{
     int alloc;
     Move* array;
 }MoveList;
-
+//TODO make player struct which saves time and is ai and stuff for each player /otime /time
 typedef struct Properties{
     int depth;
     int timelimit;

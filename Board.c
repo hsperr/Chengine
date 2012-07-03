@@ -532,16 +532,79 @@ ChError doMove(ChessBoard* board, Move* move){
     move->previousEnPassantSquare=board->enPassantSquare;
     
     
-    //moveRookForCastling
-    PieceInfo* fromPiece=getPieceForTile(board, move->from);
-    if(fromPiece->piece==king){
-        if(move->from-move->to==0x02){
+    board->enPassantSquare=-5;
+    move->pieceToSquareIndexTo=NULL;
+    int delta=0;
+    int newPosition=0;
+    int rookPos;
+    PieceInfo* rookInfo=NULL;
+    PieceInfo* fromPiece=board->tiles[move->from];
+    
+    switch (move->moveType) {
+        case PAWNDOUBLE:
+            board->enPassantSquare=move->from+(move->to-move->from)/0x02;
+        case NORMAL:
+            move->pieceToSquareIndexTo=board->tiles[move->to];
+            if(move->pieceToSquareIndexTo){
+                removePieceZobrist(&board->zobrist,move->to, move->pieceToSquareIndexTo->piece,myColor==WHITE?BLACK:WHITE);
+                board->tiles[move->to]=NULL;
+                move->pieceToSquareIndexTo->location=-5;
+            }
+            
+            board->tiles[move->to]=board->tiles[move->from];
+            removePieceZobrist(&board->zobrist,move->from, board->tiles[move->from]->piece,myColor);
+            board->tiles[move->from]=NULL;
+            
+            board->tiles[move->to]->location=move->to;
+            addPieceZobrist(&board->zobrist,move->to, board->tiles[move->to]->piece,myColor);
+
+            break;
+        case ENPASSANT:
+            delta=COLUMN(move->to)-COLUMN(move->from);
+            
+            move->pieceToSquareIndexTo=board->tiles[move->from+delta];
+            board->tiles[move->from+delta]=NULL;
+            
+            removePieceZobrist(&board->zobrist,move->from+delta, move->pieceToSquareIndexTo->piece,myColor==WHITE?BLACK:WHITE);
+            
+            move->pieceToSquareIndexTo->location=-5;
+            
+            board->tiles[move->to]=board->tiles[move->from];
+            removePieceZobrist(&board->zobrist,move->from, board->tiles[move->from]->piece,myColor);
+            board->tiles[move->from]=NULL;
+            
+            board->tiles[move->to]->location=move->to;
+            addPieceZobrist(&board->zobrist,move->to, board->tiles[move->to]->piece,myColor);
+
+            break;
+        case QUEENCASTLE:
+             newPosition=move->to-0x01;
+             rookPos=myColor==WHITE?H1:H8;
+            
+            rookInfo=board->tiles[rookPos];
+            
+            assert(rookInfo->piece==rook);
+            
+            removePieceZobrist(&board->zobrist,rookInfo->location,rookInfo->piece,myColor);
+            addPieceZobrist(&board->zobrist,newPosition,rookInfo->piece,myColor);
+            
+            rookInfo->location=newPosition;
+            board->tiles[newPosition]=board->tiles[rookPos];
+            board->tiles[rookPos]=NULL;
+            if(myRights->kingCastlingPossible){
+                myRights->kingCastlingPossible=0;
+                updateCastleRightZobrist(&board->zobrist, myColor==WHITE?0:2);
+            }
+                myRights->queenCastlingPossible=0;
+                updateCastleRightZobrist(&board->zobrist, myColor==WHITE?1:3);
+            break;
+        case KINGCASTLE:
             // side
-            int rookPos=myColor==WHITE?A1:A8;
-            int newPosition=move->to+0x01;
+            rookPos=myColor==WHITE?A1:A8;
+            newPosition=move->to+0x01;
             assert(board->tiles[rookPos]!=NULL);
             
-            PieceInfo* rookInfo=board->tiles[rookPos];
+            rookInfo=board->tiles[rookPos];
             
             assert(rookInfo->piece==rook);
             
@@ -552,31 +615,34 @@ ChError doMove(ChessBoard* board, Move* move){
             board->tiles[newPosition]=board->tiles[rookPos];
             board->tiles[rookPos]=NULL;
             
-        }else if(move->from-move->to==-0x02){
-            int newPosition=move->to-0x01;
-            int rookPos=myColor==WHITE?H1:H8;
-            
-            PieceInfo* rookInfo=board->tiles[rookPos];
-            
-            assert(rookInfo->piece==rook);
-            
-            removePieceZobrist(&board->zobrist,rookInfo->location,rookInfo->piece,myColor);
-            addPieceZobrist(&board->zobrist,newPosition,rookInfo->piece,myColor);
-            
-            rookInfo->location=newPosition;
-            board->tiles[newPosition]=board->tiles[rookPos];
-            board->tiles[rookPos]=NULL;
-            
-        }
-        if(myRights->kingCastlingPossible){
             myRights->kingCastlingPossible=0;
             updateCastleRightZobrist(&board->zobrist, myColor==WHITE?0:2);
-        }
-        if(myRights->queenCastlingPossible){
-            myRights->queenCastlingPossible=0;
-            updateCastleRightZobrist(&board->zobrist, myColor==WHITE?1:3);
-        }
+            if(myRights->queenCastlingPossible){
+                myRights->queenCastlingPossible=0;
+                updateCastleRightZobrist(&board->zobrist, myColor==WHITE?1:3);
+            }
+
+            break;
+        case PROMOTION:
+            removePieceZobrist(&board->zobrist,fromPiece->location, fromPiece->piece, myColor);
+            fromPiece->piece=move->promote;
+            addPieceZobrist(&board->zobrist,fromPiece->location, fromPiece->piece, myColor);
+            fromPiece->score=getPieceScore(move->promote);
+            //ADD normal move
+            
+            board->tiles[move->to]=board->tiles[move->from];
+            removePieceZobrist(&board->zobrist,move->from, board->tiles[move->from]->piece,myColor);
+            board->tiles[move->from]=NULL;
+            
+            board->tiles[move->to]->location=move->to;
+            addPieceZobrist(&board->zobrist,move->to, board->tiles[move->to]->piece,myColor);
+
+            break;
+            
+        default:
+            break;
     }
+
     
     int qRookField=myColor==WHITE?A1:A8;
     if(move->from==qRookField&&myRights->queenCastlingPossible){
@@ -600,52 +666,7 @@ ChError doMove(ChessBoard* board, Move* move){
         opponentRights->kingCastlingPossible=0;
         updateCastleRightZobrist(&board->zobrist, myColor==WHITE?2:0);
     }
-    
-    board->enPassantSquare=-5;
-    
-    move->pieceToSquareIndexTo=NULL;
-    //removePiece (Enpassant/Normal)
-    if(fromPiece->piece==pawn){
-        if(!SAME_COLUMN(move->from, move->to)&&!board->tiles[move->to]){
-            int delta=COLUMN(move->to)-COLUMN(move->from);
-            
-            move->pieceToSquareIndexTo=board->tiles[move->from+delta];
-            board->tiles[move->from+delta]=NULL;
-            
-            removePieceZobrist(&board->zobrist,move->from+delta, move->pieceToSquareIndexTo->piece,myColor==WHITE?BLACK:WHITE);
-  
-            move->pieceToSquareIndexTo->location=-5;
-        } 
-        if(move->to-move->from==0x20||
-           move->to-move->from==-0x20){
-            board->enPassantSquare=move->from+(move->to-move->from)/0x02;
-        }
-        if(move->promote>0){
-            removePieceZobrist(&board->zobrist,fromPiece->location, fromPiece->piece, myColor);
-            fromPiece->piece=move->promote;
-            addPieceZobrist(&board->zobrist,fromPiece->location, fromPiece->piece, myColor);
-            
-            fromPiece->score=getPieceScore(move->promote);
-            
-            
-        }
-        
-    }
-    if(board->tiles[move->to]!=0x0){
-        move->pieceToSquareIndexTo=board->tiles[move->to];
-         removePieceZobrist(&board->zobrist,move->to, move->pieceToSquareIndexTo->piece,myColor==WHITE?BLACK:WHITE);
-        board->tiles[move->to]=NULL;
-        move->pieceToSquareIndexTo->location=-5;
-        
-    }
-    
-    board->tiles[move->to]=board->tiles[move->from];
-    removePieceZobrist(&board->zobrist,move->from, board->tiles[move->from]->piece,myColor);
-    board->tiles[move->from]=NULL;
-    
-    board->tiles[move->to]->location=move->to;
-    addPieceZobrist(&board->zobrist,move->to, board->tiles[move->to]->piece,myColor);
-    
+       
     //updateColor
     board->colorToPlay=board->colorToPlay==WHITE?BLACK:WHITE;
     switchColorZobrist(&board->zobrist);
@@ -677,27 +698,66 @@ ChError undoMove(ChessBoard* board, Move* move){
     
     
     PieceInfo* fromPiece=getPieceForTile(board, move->from);
-    
-    //promotion
-    if(move->promote>0){
-         removePieceZobrist(&board->zobrist, fromPiece->location, fromPiece->piece, board->colorToPlay);
-        fromPiece->piece=pawn;
-        addPieceZobrist(&board->zobrist, fromPiece->location, fromPiece->piece, board->colorToPlay);
-        fromPiece->score=getPieceScore(pawn);
-    }
-    
-    if(fromPiece->piece==pawn&&move->to==move->previousEnPassantSquare){
-        assert(move->pieceToSquareIndexTo!=NULL);
-        int delta=COLUMN(move->to)-COLUMN(move->from);
-        int pawnPos=move->from+delta;
+    Color myColor=board->colorToPlay;
+    int rookPos=0;
+    int oldPos=0;
+    switch (move->moveType) {
+        case PAWNDOUBLE:
         
-        board->tiles[pawnPos]=move->pieceToSquareIndexTo;
-        addPieceZobrist(&board->zobrist, pawnPos, pawn, board->colorToPlay==WHITE?BLACK:WHITE);
-        board->tiles[pawnPos]->location=pawnPos;
-    }else if(move->pieceToSquareIndexTo!=NULL){
-        board->tiles[move->to]=move->pieceToSquareIndexTo;
-        addPieceZobrist(&board->zobrist, move->to, move->pieceToSquareIndexTo->piece, board->colorToPlay==WHITE?BLACK:WHITE);
-        board->tiles[move->to]->location=move->to;
+        case NORMAL:
+            if(move->pieceToSquareIndexTo!=NULL){
+                board->tiles[move->to]=move->pieceToSquareIndexTo;
+                addPieceZobrist(&board->zobrist, move->to, move->pieceToSquareIndexTo->piece, board->colorToPlay==WHITE?BLACK:WHITE);
+                board->tiles[move->to]->location=move->to;
+            }
+
+                       
+            break;
+        case ENPASSANT:
+            assert(move->pieceToSquareIndexTo!=NULL);
+            int delta=COLUMN(move->to)-COLUMN(move->from);
+            int pawnPos=move->from+delta;
+            
+            board->tiles[pawnPos]=move->pieceToSquareIndexTo;
+            addPieceZobrist(&board->zobrist, pawnPos, pawn, board->colorToPlay==WHITE?BLACK:WHITE);
+            board->tiles[pawnPos]->location=pawnPos;
+            
+            break;
+        case QUEENCASTLE:
+            //qrook
+            rookPos=myColor==WHITE?A1:A8;
+            oldPos=(move->to+0x01);
+            
+            assert(board->tiles[oldPos]->piece==rook);
+            board->tiles[rookPos]=board->tiles[oldPos];
+            removePieceZobrist(&board->zobrist, oldPos, rook, board->colorToPlay);
+            addPieceZobrist(&board->zobrist, rookPos, rook, board->colorToPlay);
+            board->tiles[rookPos]->location=rookPos;
+            board->tiles[oldPos]=NULL;
+
+                       break;
+        case KINGCASTLE:
+            //krook
+            rookPos=myColor==WHITE?H1:H8;
+            oldPos=(move->to-0x01);
+            assert(board->tiles[(move->to-0x01)]->piece==rook);
+            
+            board->tiles[rookPos]=board->tiles[oldPos];
+            removePieceZobrist(&board->zobrist, oldPos, rook, board->colorToPlay);
+            addPieceZobrist(&board->zobrist, rookPos, rook, board->colorToPlay);
+            board->tiles[rookPos]->location=rookPos;
+            board->tiles[oldPos]=NULL; 
+            break;
+        case PROMOTION:
+            removePieceZobrist(&board->zobrist, fromPiece->location, fromPiece->piece, board->colorToPlay);
+            fromPiece->piece=pawn;
+            addPieceZobrist(&board->zobrist, fromPiece->location, fromPiece->piece, board->colorToPlay);
+            fromPiece->score=getPieceScore(pawn);
+ 
+            break;
+            
+        default:
+            break;
     }
     
     //UpdateEnpassantSquare
@@ -705,7 +765,6 @@ ChError undoMove(ChessBoard* board, Move* move){
     board->enPassantSquare=move->previousEnPassantSquare;
     
     
-    //moveRookForCastling
     if(board->rights[WHITE].queenCastlingPossible!=move->whiteQueenCastlingRights){
         board->rights[WHITE].queenCastlingPossible=move->whiteQueenCastlingRights;
         updateCastleRightZobrist(&board->zobrist, 1);
@@ -722,33 +781,6 @@ ChError undoMove(ChessBoard* board, Move* move){
         updateCastleRightZobrist(&board->zobrist, 2);
     }
     
-    Color myColor=board->colorToPlay;
-    if(fromPiece->piece==king){
-        if((move->from-move->to==0x02)){
-            //qrook
-            int rookPos=myColor==WHITE?A1:A8;
-            int oldPos=(move->to+0x01);
-            
-            assert(board->tiles[oldPos]->piece==rook);
-            board->tiles[rookPos]=board->tiles[oldPos];
-            removePieceZobrist(&board->zobrist, oldPos, rook, board->colorToPlay);
-            addPieceZobrist(&board->zobrist, rookPos, rook, board->colorToPlay);
-            board->tiles[rookPos]->location=rookPos;
-            board->tiles[oldPos]=NULL;
-            
-        }else if((move->from-move->to==-0x02)){
-            //krook
-            int rookPos=myColor==WHITE?H1:H8;
-            int oldPos=(move->to-0x01);
-            assert(board->tiles[(move->to-0x01)]->piece==rook);
-            
-            board->tiles[rookPos]=board->tiles[oldPos];
-            removePieceZobrist(&board->zobrist, oldPos, rook, board->colorToPlay);
-            addPieceZobrist(&board->zobrist, rookPos, rook, board->colorToPlay);
-            board->tiles[rookPos]->location=rookPos;
-            board->tiles[oldPos]=NULL;
-        }
-    }
     
     board->playedMoves.nextFree--;
     
@@ -760,11 +792,12 @@ int isCheck(ChessBoard* board, Color color){
     return isAttacked(board, myPieces[0].location, color==WHITE?BLACK:WHITE);
     
 }
-static ChError addMove(ChessBoard* board,int from, int to, PIECE promotion, MoveList* list){
+static ChError addMove(ChessBoard* board, enum MoveType moveType,int from, int to, PIECE promotion, MoveList* list){
     ChError hr=ChError_OK;
     Move move={-5};
     move.from=from;
     move.to=to;
+    move.moveType=moveType;
     move.promote=promotion;
     
     hr=addToMoveList(list, &move);
@@ -792,12 +825,12 @@ ChError generateMoveForPosition(ChessBoard* board,const PieceInfo* pieceInfo, Mo
                     
                     if(((nextPosition&0xF0)==0x00&&pieceInfo->color==WHITE)||
                        ((nextPosition&0xF0)==0x70&&pieceInfo->color==BLACK)){
-                        addMove(board,position, nextPosition,queen, moveList);
-                        addMove(board,position, nextPosition,knight, moveList);
-                        addMove(board,position, nextPosition,rook, moveList);
-                        addMove(board,position, nextPosition,bishop, moveList);
+                        addMove(board,PROMOTION,position, nextPosition,queen, moveList);
+                        addMove(board,PROMOTION,position, nextPosition,knight, moveList);
+                        addMove(board,PROMOTION,position, nextPosition,rook, moveList);
+                        addMove(board,PROMOTION,position, nextPosition,bishop, moveList);
                     }else{
-                        addMove(board,position, nextPosition,0, moveList);
+                        addMove(board,NORMAL,position, nextPosition,0, moveList);
                     }
                     
                     int homeRow=pieceInfo->color==BLACK?(position&0xF0)==0x10:(position&0xF0)==0x60;
@@ -805,7 +838,7 @@ ChError generateMoveForPosition(ChessBoard* board,const PieceInfo* pieceInfo, Mo
                         nextPosition+=0x10*pawnDirectionModifier;
                         pieceOnNewSquare=getPieceForTile(board,nextPosition);
                         if(!pieceOnNewSquare){
-                            addMove(board,position, nextPosition,0, moveList);
+                            addMove(board,PAWNDOUBLE,position, nextPosition,0, moveList);
                         }
                     }
                 }
@@ -817,15 +850,15 @@ ChError generateMoveForPosition(ChessBoard* board,const PieceInfo* pieceInfo, Mo
                    pieceOnNewSquare->color!=pieceInfo->color){
                     if(((nextPosition&0xF0)==0x00&&pieceInfo->color==WHITE)||
                        ((nextPosition&0xF0)==0x70&&pieceInfo->color==BLACK)){
-                        addMove(board,position, nextPosition,queen, moveList);
-                        addMove(board,position, nextPosition,knight, moveList);
-                        addMove(board,position, nextPosition,rook, moveList);
-                        addMove(board,position, nextPosition,bishop, moveList);
+                        addMove(board,PROMOTION,position, nextPosition,queen, moveList);
+                        addMove(board,PROMOTION,position, nextPosition,knight, moveList);
+                        addMove(board,PROMOTION,position, nextPosition,rook, moveList);
+                        addMove(board,PROMOTION,position, nextPosition,bishop, moveList);
                     }else{
-                        addMove(board,position, nextPosition,0, moveList);               
+                        addMove(board,NORMAL,position, nextPosition,0, moveList);               
                     }
                 }else if(board->enPassantSquare==nextPosition){
-                    addMove(board,position, nextPosition,0, moveList); 
+                    addMove(board,ENPASSANT,position, nextPosition,0, moveList); 
                 }
             }
             nextPosition=position+0x0F*pawnDirectionModifier;
@@ -835,15 +868,15 @@ ChError generateMoveForPosition(ChessBoard* board,const PieceInfo* pieceInfo, Mo
                    pieceOnNewSquare->color!=pieceInfo->color){
                     if(((nextPosition&0xF0)==0x00&&pieceInfo->color==WHITE)||
                        ((nextPosition&0xF0)==0x70&&pieceInfo->color==BLACK)){
-                        addMove(board,position, nextPosition,queen, moveList);
-                        addMove(board,position, nextPosition,knight, moveList);
-                        addMove(board,position, nextPosition,rook, moveList);
-                        addMove(board,position, nextPosition,bishop, moveList);
+                        addMove(board,PROMOTION,position, nextPosition,queen, moveList);
+                        addMove(board,PROMOTION,position, nextPosition,knight, moveList);
+                        addMove(board,PROMOTION,position, nextPosition,rook, moveList);
+                        addMove(board,PROMOTION,position, nextPosition,bishop, moveList);
                     }else{
-                        addMove(board,position, nextPosition,0, moveList);
+                        addMove(board,NORMAL,position, nextPosition,0, moveList);
                     }
                 }else if(board->enPassantSquare==nextPosition){
-                    addMove(board,position, nextPosition,0, moveList); 
+                    addMove(board,ENPASSANT,position, nextPosition,0, moveList); 
                 }
             }               
             
@@ -857,7 +890,7 @@ ChError generateMoveForPosition(ChessBoard* board,const PieceInfo* pieceInfo, Mo
                     pieceOnNewSquare=getPieceForTile(board,nextPosition);
                     if(!pieceOnNewSquare||
                        pieceOnNewSquare->color!=pieceInfo->color){
-                        addMove(board,position, nextPosition,0, moveList);
+                        addMove(board,NORMAL,position, nextPosition,0, moveList);
                     }
                 }
             }
@@ -872,7 +905,7 @@ ChError generateMoveForPosition(ChessBoard* board,const PieceInfo* pieceInfo, Mo
                     if((!pieceOnNewSquare||
                         pieceOnNewSquare->color!=pieceInfo->color)&&
                        !isAttacked(board,nextPosition,enemyColor)){
-                        addMove(board,position, nextPosition,0, moveList);;
+                        addMove(board,NORMAL,position, nextPosition,0, moveList);;
                     }
                     
                 }
@@ -883,7 +916,7 @@ ChError generateMoveForPosition(ChessBoard* board,const PieceInfo* pieceInfo, Mo
                    board->tiles[position+0x02]==NULL&&
                    !isAttacked(board, position+0x01, enemyColor)&&
                    !isAttacked(board, position+0x02, enemyColor)){
-                    addMove(board,position, position+0x02,0, moveList);
+                    addMove(board,KINGCASTLE,position, position+0x02,0, moveList);
                 }
             }
             if(castleRights->queenCastlingPossible==1){
@@ -892,7 +925,7 @@ ChError generateMoveForPosition(ChessBoard* board,const PieceInfo* pieceInfo, Mo
                    board->tiles[position-0x03]==NULL&&
                    !isAttacked(board, position-0x01, enemyColor)&&
                    !isAttacked(board, position-0x02, enemyColor)){
-                    addMove(board,position, position-0x02,0, moveList);
+                    addMove(board,QUEENCASTLE,position, position-0x02,0, moveList);
                 }
             }
             
@@ -907,10 +940,10 @@ ChError generateMoveForPosition(ChessBoard* board,const PieceInfo* pieceInfo, Mo
                 while(IS_ON_BOARD(nextPosition)){
                     pieceOnNewSquare=getPieceForTile(board,nextPosition);
                     if(!pieceOnNewSquare){
-                        addMove(board,position, nextPosition,0, moveList);
+                        addMove(board,NORMAL,position, nextPosition,0, moveList);
                     }else{
                         if(pieceOnNewSquare->color!=pieceInfo->color){
-                            addMove(board,position, nextPosition,0, moveList); 
+                            addMove(board,NORMAL,position, nextPosition,0, moveList); 
                         }
                         break;
                     }
@@ -924,10 +957,10 @@ ChError generateMoveForPosition(ChessBoard* board,const PieceInfo* pieceInfo, Mo
                 while(IS_ON_BOARD(nextPosition)){
                     pieceOnNewSquare=getPieceForTile(board,nextPosition);
                     if(!pieceOnNewSquare){
-                        addMove(board,position, nextPosition,0, moveList);
+                        addMove(board,NORMAL,position, nextPosition,0, moveList);
                     }else{
                         if(pieceOnNewSquare->color!=pieceInfo->color){
-                            addMove(board,position, nextPosition,0, moveList);
+                            addMove(board,NORMAL,position, nextPosition,0, moveList);
                         }
                         break;
                     }
@@ -941,10 +974,10 @@ ChError generateMoveForPosition(ChessBoard* board,const PieceInfo* pieceInfo, Mo
                 while(IS_ON_BOARD(nextPosition)){
                     pieceOnNewSquare=getPieceForTile(board,nextPosition);
                     if(!pieceOnNewSquare){
-                        addMove(board,position, nextPosition,0, moveList);
+                        addMove(board,NORMAL,position, nextPosition,0, moveList);
                     }else{
                         if(pieceOnNewSquare->color!=pieceInfo->color){
-                            addMove(board,position, nextPosition,0, moveList);
+                            addMove(board,NORMAL,position, nextPosition,0, moveList);
                         }
                         break;
                     }
@@ -957,10 +990,10 @@ ChError generateMoveForPosition(ChessBoard* board,const PieceInfo* pieceInfo, Mo
                 while(IS_ON_BOARD(nextPosition)){
                     pieceOnNewSquare=getPieceForTile(board,nextPosition);
                     if(!pieceOnNewSquare){
-                        addMove(board,position, nextPosition,0, moveList);
+                        addMove(board,NORMAL,position, nextPosition,0, moveList);
                     }else{
                         if(pieceOnNewSquare->color!=pieceInfo->color){
-                            addMove(board,position, nextPosition,0, moveList); 
+                            addMove(board,NORMAL,position, nextPosition,0, moveList); 
                         }
                         break;
                     }
@@ -977,12 +1010,10 @@ ChError generateMoveForPosition(ChessBoard* board,const PieceInfo* pieceInfo, Mo
 
 ChError generateMoves(ChessBoard* board,enum Color color, MoveList* moveList){
     PieceInfo* pieceArray=color==WHITE?board->whiteToSquare:board->blackToSquare;
-    
     for(int i=0;i<16;i++){
         if(pieceArray[i].location==-5){
             continue;
         }
-          
         generateMoveForPosition(board,&pieceArray[i], moveList);
     }
     return ChError_OK;

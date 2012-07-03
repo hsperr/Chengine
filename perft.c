@@ -23,9 +23,10 @@ long perft_rec(ChessBoard* board, Color sideToMove, int depth, MoveList* list){
         printf("Error in perft %d\n",hr);
     
     for(int i=startOffset;i<list->nextFree;i++){
-        doMove(board,&list->array[i]);
+        Move* moveToDo=&list->array[i];
+        doMove(board,moveToDo);
         moves+=perft_rec(board,board->colorToPlay,depth-1,list);
-        undoMove(board,&list->array[i]);
+        undoMove(board,moveToDo);
     }
     list->nextFree=startOffset;
     return moves;
@@ -69,7 +70,12 @@ long perft_hash_rec(ChessBoard* board, Color sideToMove, int depth, MoveList* li
     
     ChError hr=ChError_OK;
     long moves=0;
-    int iterationMoves;
+     
+    if((hr=probe(board->zobrist, depth, (int*)&moves))){
+        //not in table
+    }else{
+        return moves;
+    }
     
     int startOffset=list->nextFree;
     hr=generateMoves(board, sideToMove, list);
@@ -79,12 +85,9 @@ long perft_hash_rec(ChessBoard* board, Color sideToMove, int depth, MoveList* li
     for(int i=startOffset;i<list->nextFree;i++){
         Move* move=&list->array[i];
         doMove(board,move);
-        if((hr=probe(board->zobrist, depth-1, &iterationMoves))){
-            moves+=perft_hash_rec(board,board->colorToPlay,depth-1,list);
-        }else{
-            moves+=iterationMoves;
-            iterationMoves=0;
-        }
+        
+        moves+=perft_hash_rec(board,board->colorToPlay,depth-1,list);
+       
         undoMove(board,&list->array[i]);
     }
     list->nextFree=startOffset;
@@ -94,23 +97,27 @@ long perft_hash_rec(ChessBoard* board, Color sideToMove, int depth, MoveList* li
 
 long perft_hash(ChessBoard* board, int depth){
     long moved=0;
-    long iterationMoves=0;
     unsigned long time=clock();
     ChError hr=ChError_OK;
     
     MoveList moveList = {0};
     
-    hr=generateMoves(board, board->colorToPlay, &moveList);
-    if(hr)
-        printf("Error in perft %d\n",hr);
-    
-    for(int i=0;i<moveList.nextFree;i++){
-        iterationMoves=0;
-        doMove(board,&moveList.array[i]);
-        iterationMoves+=perft_hash_rec(board,board->colorToPlay,depth-1, &moveList);
-        moved+=iterationMoves;
-        undoMove(board,&moveList.array[i]);
+    if((hr=probe(board->zobrist, depth, (int*)&moved))){
+        moved=0;
+        hr=generateMoves(board, board->colorToPlay, &moveList);
+        if(hr)
+            printf("Error in perft %d\n",hr);
+        
+        for(int i=0;i<moveList.nextFree;i++){
+            doMove(board,&moveList.array[i]);
+            moved+=perft_hash_rec(board,board->colorToPlay,depth-1, &moveList);
+            undoMove(board,&moveList.array[i]);
+        }
+        addKeyToTable(board->zobrist, depth, (int)moved);
+    }else{
+        
     }
+  
     freeMoveList(&moveList);
     double timeNeeded=((double)(clock()-time)/CLOCKS_PER_SEC);
     printf("Found %ld moves in %f sec makes %f moves/sec\n",moved,timeNeeded,(float)(moved/timeNeeded));
