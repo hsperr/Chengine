@@ -149,6 +149,15 @@ void checkForInput(Game* game){
                                 Move move={-5};
                                 move.from=(int)(input[0]-'a')+0x10*(7-(int)(input[1]-'1'));
                                 move.to=(int)(input[2]-'a')+0x10*(7-(int)(input[3]-'1'));
+                                if(input[4]=='q')
+                                    move.promote=queen;
+                                else if(input[4]=='r')
+                                    move.promote=knight;
+                                else if(input[4]=='b')
+                                    move.promote=bishop;
+                                else if(input[4]=='n')
+                                    move.promote=knight;
+                                
                                 if(isLegal(&game->board,&move)){
                                     doMove(&game->board, &move);
                                     printBoardE(&game->board);

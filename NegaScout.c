@@ -55,12 +55,23 @@ int quis(ChessBoard* board,int alpha, int beta){
 }*/
 
 static ChError alphaBetaRecurse(ChessBoard* board, int depth, int alpha, int beta, int* score, MoveList* list){
+    if(isCheck(board, board->colorToPlay==WHITE?BLACK:WHITE))
+        return ChError_IllegalMove;
+    
     if(depth<=0){
-        *score=-evaluate(board);
+        *score-=evaluate(board);
         return ChError_OK;
     }
     int localAlpha=-100000;
+    int illegalMoves=0;
     ChError hr=ChError_OK;
+    
+    if((hr=probe(board->zobrist, depth, &localAlpha))){
+        //not in table
+    }else{
+       *score-=localAlpha;
+        return hr;
+    }
     
     int offset=list->nextFree;
     hr=generateMoves(board, board->colorToPlay, list);
@@ -69,25 +80,31 @@ static ChError alphaBetaRecurse(ChessBoard* board, int depth, int alpha, int bet
         return hr;
     }
     
-    if(list->nextFree==offset){
-        *score=10000;
-        return ChError_OK;
-    }
-    
     for(int moveNumber=offset;moveNumber<list->nextFree;moveNumber++){
-        hr=doMove(board,&list->array[moveNumber]);
+        Move* move=&list->array[moveNumber];
+
+        hr=doMove(board,move);
+        
         if(hr){
             freeMoveList(list);
             return hr;
         }
-        int tempScore;
+        int tempScore=0;
         hr=alphaBetaRecurse(board, depth-1, -beta,-alpha, &tempScore,list);
-      
-        if(hr){
+        if(hr==ChError_IllegalMove){
+            illegalMoves++;
+            hr=undoMove(board, move);
+            if(hr){
+                freeMoveList(list);
+                return hr;
+            }
+            continue;
+        }else if(hr){
             freeMoveList(list);
             return hr;
         }
-        hr=undoMove(board, &list->array[moveNumber]);
+
+        hr=undoMove(board, move);
         if(hr){
             freeMoveList(list);
             return hr;
@@ -101,8 +118,19 @@ static ChError alphaBetaRecurse(ChessBoard* board, int depth, int alpha, int bet
                 break;
         }
     }
+    if(illegalMoves>=(list->nextFree-1)-offset){
+        if(isCheck(board, board->colorToPlay)){
+           localAlpha=-1000000;
+        }else{
+           localAlpha=0;
+        }
+    }
     list->nextFree=offset;
-    *score=-localAlpha;
+  
+    addKeyToTable(board->zobrist, depth, localAlpha);
+    
+    *score-=localAlpha;
+    
     return hr;
     
 }
@@ -123,7 +151,16 @@ ChError doAiMove(ChessBoard* board, Properties* aiProperties){
         return hr;
     }
         
+    int illegalMoveCounter=0;
     for(int depth=1;depth<=aiProperties->depth;depth++){
+        if(illegalMoveCounter>=list.nextFree){
+            Color color=board->colorToPlay;
+            if(isCheck(board, color))
+                printf("%s {%s}\n",color==WHITE?"0-1":"1-0",color==WHITE?"Black mates":"White mates");
+            else
+                printf("%s {%s}\n","1/2-1/2", "Stalemate");
+        }
+        illegalMoveCounter=0;
         for(int moveNumber=0;moveNumber<list.nextFree;moveNumber++){
             
             hr=doMove(board,&list.array[moveNumber]);
@@ -131,11 +168,13 @@ ChError doAiMove(ChessBoard* board, Properties* aiProperties){
                 freeMoveList(&list);
                 return hr;
             }
-            int tempScore;
+            int tempScore=0;
 
             hr=alphaBetaRecurse(board, depth-1, -beta,-alpha,&tempScore,&list);
 
-            if(hr){
+            if(hr==ChError_IllegalMove){
+                illegalMoveCounter++;
+            }else if(hr){
                 freeMoveList(&list);
                 return hr;
             }
@@ -149,8 +188,8 @@ ChError doAiMove(ChessBoard* board, Properties* aiProperties){
             if(tempScore>alpha){
                 bestMove= list.array[moveNumber];
                 alpha=tempScore;
-                printf("%dbest move score %d\n",depth,alpha);
-                if(alpha==10000)
+                //printf("%dbest move score %d\n",depth,alpha);
+                if(alpha>=100000)
                     break;
             }
         }

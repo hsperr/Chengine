@@ -26,25 +26,12 @@ u_int64_t indexMask=0;
 
 TableEntry* hashTable;
 
-static unsigned long
-x=123456789,
-y=362436069,
-z=521288629,
-w=88675123,
-v=886756453;
-/* replace defaults with five random seed values in calling program */
 
-static unsigned long xorshift(void)
+u_int64_t rand64(void)
 {
-    unsigned long t = x^(x>>7);
-    x=y; y=z; z=w; w=v;
-    v=(v^(v<<6))^(t^(t<<13));
-    return (y+y+1)*v;
+    return rand() ^ ((u_int64_t)rand() << 15) ^ ((u_int64_t)rand() << 30) ^
+    ((u_int64_t)rand() << 45) ^ ((u_int64_t)rand() << 60);
 }
-static u_int64_t rand64() {
-    return ((u_int64_t)(xorshift())<<32)|xorshift();
-}
-
 
 ChError initTable(long size, long inMask){
     srand(17L);
@@ -130,11 +117,11 @@ ChError probe(u_int64_t zobrist, int depth,int* score){
     
     if(entry->zobrist==zobrist){
         //we found that position before
-        if(entry->depth==depth){
+        if(entry->depth>=depth){
             *score=entry->score;
             return ChError_OK;
         }else{
-            return Cherror_DepthToLow;
+            return ChError_DepthToLow;
         }
     }
     
@@ -185,6 +172,9 @@ ChError addKeyToTable(u_int64_t zobrist, int depth, int score){
     if(entry->zobrist==zobrist){
         //we found that position before
         if(entry->depth<depth){
+            entry->depth=depth;
+            entry->score=score;
+        }else if(entry->depth==depth&&score>=entry->score){
             entry->depth=depth;
             entry->score=score;
         }

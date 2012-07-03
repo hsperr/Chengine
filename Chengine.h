@@ -35,7 +35,8 @@ typedef enum {
     ChError_BrokenFenString,
     ChError_RepetitionDraw,
     ChError_NotInTable,
-    Cherror_DepthToLow
+    ChError_DepthToLow,
+    ChError_IllegalMove
 } ChError;
 
 typedef struct PieceInfo{
@@ -63,6 +64,7 @@ typedef struct Move{
     PieceInfo* pieceToSquareIndexTo;//also used for enpassant
     PIECE promote;
     enum MoveType moveType;
+    int oldStaleMateMoves;
     
     int whiteKingCastlingRights;
     int whiteQueenCastlingRights;

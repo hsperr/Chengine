@@ -22,6 +22,12 @@ long perft_rec(ChessBoard* board, Color sideToMove, int depth, MoveList* list){
     if(hr)
         printf("Error in perft %d\n",hr);
     
+    if(depth==1){
+        int movesFound=list->nextFree-startOffset;
+        list->nextFree=startOffset;
+        return movesFound;
+    }
+    
     for(int i=startOffset;i<list->nextFree;i++){
         Move* moveToDo=&list->array[i];
         doMove(board,moveToDo);
@@ -35,7 +41,6 @@ long perft_rec(ChessBoard* board, Color sideToMove, int depth, MoveList* list){
 
 long perft(ChessBoard* board, int depth){
     long moved=0;
-    long iterationMoves=0;
     unsigned long time=clock();
     ChError hr=ChError_OK;
     
@@ -46,11 +51,10 @@ long perft(ChessBoard* board, int depth){
         printf("Error in perft %d\n",hr);
     
     for(int i=0;i<moveList.nextFree;i++){
-        iterationMoves=0;
-        doMove(board,&moveList.array[i]);
-        iterationMoves+=perft_rec(board,board->colorToPlay,depth-1, &moveList);
-        moved+=iterationMoves;
-        undoMove(board,&moveList.array[i]);
+        Move* move=&moveList.array[i];
+        doMove(board,move);
+        moved+=perft_rec(board,board->colorToPlay,depth-1, &moveList);
+        undoMove(board,move);
         
     }
     freeMoveList(&moveList);
@@ -81,6 +85,12 @@ long perft_hash_rec(ChessBoard* board, Color sideToMove, int depth, MoveList* li
     hr=generateMoves(board, sideToMove, list);
     if(hr)
         printf("Error in perft %d\n",hr);
+    
+    if(depth==1){
+        int movesFound=list->nextFree-startOffset;
+        list->nextFree=startOffset;
+        return movesFound;
+    }
     
     for(int i=startOffset;i<list->nextFree;i++){
         Move* move=&list->array[i];
