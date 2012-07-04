@@ -291,20 +291,20 @@ ChError readFENString(ChessBoard* board, char* fen){
     
     if(fen[stringIndex]=='\0'){
         return ChError_OK;
-    }else{
-        return ChError_BrokenFenString;
-    }
-    if(fen[stringIndex]==' '){
+    } if(fen[stringIndex]==' '){
         stringIndex++;
     }else{
         return ChError_BrokenFenString;
     }
     
-    board->staleMateMoves=(int)fen[stringIndex];
-    stringIndex++;
+    board->staleMateMoves=0;
+    while(fen[stringIndex]!=' '){
+        char fenPos=fen[stringIndex];
+        board->staleMateMoves=board->staleMateMoves*10+(int)(fenPos-'0');
+        stringIndex++;
+    }
     
     //handle stalematemoves
-    stringIndex++;
     if(fen[stringIndex]==' '){
         stringIndex++;
     }else{
@@ -653,7 +653,7 @@ ChError doMove(ChessBoard* board, Move* move){
     switchColorZobrist(&board->zobrist);
     setEnPassantZobrist(&board->zobrist, move->previousEnPassantSquare, board->enPassantSquare);
     
-    //addToMoveList(&board->playedMoves, move);
+    addToMoveList(&board->playedMoves, move);
     if(move->pieceToSquareIndexTo==NULL&&board->tiles[move->to]!=pawn)
         board->staleMateMoves++;
     else
@@ -770,12 +770,35 @@ int isCheck(ChessBoard* board, Color color){
 }
 static ChError addMove(ChessBoard* board,int from, int to, PIECE promotion, MoveList* list){
     ChError hr=ChError_OK;
-    Move move={-5};
-    move.from=from;
-    move.to=to;
-    move.promote=promotion;
     
-    hr=addToMoveList(list, &move);
+    PieceInfo* temp = board->tiles[to];
+    if(board->tiles[to])
+        board->tiles[to]->location=-1;
+    
+    board->tiles[to]=board->tiles[from];
+    board->tiles[from]->location=to;
+    board->tiles[from]=NULL;
+    
+    if(isCheck(board, board->colorToPlay)){
+        board->tiles[from]=board->tiles[to];
+        board->tiles[to]=temp;
+        if(temp)
+            board->tiles[to]->location=to;
+        board->tiles[from]->location=from;
+    }else{
+        board->tiles[from]=board->tiles[to];
+        board->tiles[to]=temp;
+        if(temp)
+            board->tiles[to]->location=to;
+        board->tiles[from]->location=from;
+        
+        Move move={-5};
+        move.from=from;
+        move.to=to;
+        move.promote=promotion;
+        hr=addToMoveList(list, &move);
+    }
+    
     return hr;
 }
 
@@ -986,21 +1009,33 @@ ChError generateMoveForPosition(ChessBoard* board,const PieceInfo* pieceInfo, Mo
 ChError generateMoves(ChessBoard* board,enum Color color, MoveList* moveList){
     PieceInfo* pieceArray=color==WHITE?board->whiteToSquare:board->blackToSquare;
     
+    int offset=moveList->nextFree;
     for(int i=0;i<16;i++){
         if(pieceArray[i].location==-5){
             continue;
         }
         generateMoveForPosition(board,&pieceArray[i], moveList);
     }
+    
+    if(moveList->nextFree==offset){
+        if(isCheck(board, color)){
+            return ChError_CheckMate;
+        }else{
+            return ChError_StaleMate;
+        }
+    }
+    
     return ChError_OK;
 }
 int equalMoves(Move* move1, Move* move2){
     return move1->from==move2->from&&move1->to==move2->to;
 }
-int isLegal(ChessBoard* board, Move* move){
+ChError isLegal(ChessBoard* board, Move* move){
     MoveList moveList={0};
     
-    generateMoves(board, board->colorToPlay, &moveList);
+    ChError hr=generateMoves(board, board->colorToPlay, &moveList);
+    if(hr)
+        return hr;
     
     for(int i=0;i<moveList.nextFree;i++){
         if(equalMoves(&moveList.array[i],move)){
@@ -1009,7 +1044,7 @@ int isLegal(ChessBoard* board, Move* move){
         }
     }
     freeMoveList(&moveList);
-    return 0;
+    return ChError_OK;
 }
 
 PieceInfo* getPieceForTile(ChessBoard* board, int tileIndex){

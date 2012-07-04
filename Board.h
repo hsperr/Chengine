@@ -32,7 +32,8 @@ ChError insertPiece(ChessBoard* board, PIECE pieceType, Color color, int locatio
 
 int isCheck(ChessBoard* board, Color color);
 int isAttacked(ChessBoard* board, int position, enum Color color);
-int isLegal(ChessBoard* board, Move* move);
+ChError isLegal(ChessBoard* board, Move* move);
+
 
 PieceInfo* getPieceForTile(ChessBoard* board, int tileIndex);
 

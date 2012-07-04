@@ -8,6 +8,9 @@
 
 #include "NegaScout.h"
 
+#define MATE_SCORE -300000
+#define INIT_ALPHA 1000000
+
 static int evaluate(ChessBoard* board){
     PieceInfo* myPieces=board->colorToPlay==WHITE?board->whiteToSquare:board->blackToSquare;
     PieceInfo* enemyPieces=board->colorToPlay==BLACK?board->whiteToSquare:board->blackToSquare;
@@ -22,7 +25,7 @@ static int evaluate(ChessBoard* board){
             score-=enemyPieces[i].score;
         }
     }
-    
+        
     return score;
     
 }
@@ -54,81 +57,95 @@ int quis(ChessBoard* board,int alpha, int beta){
     
 }*/
 
-static ChError alphaBetaRecurse(ChessBoard* board, int depth, int alpha, int beta, int* score, MoveList* list){
-    if(isCheck(board, board->colorToPlay==WHITE?BLACK:WHITE))
-        return ChError_IllegalMove;
+static ChError alphaBetaRecurse(ChessBoard* board, int depth, int alpha, int beta, int* score, MoveList* list){ 
+    int offset=list->nextFree;
+    int localAlpha=-INIT_ALPHA;
+    ChError hr=ChError_OK;
     
     if(depth<=0){
         *score-=evaluate(board);
-        return ChError_OK;
+        hr=generateMoves(board, board->colorToPlay, list);
+        switch(hr){
+            case ChError_OK:
+                break;
+            case ChError_StaleMate:
+                localAlpha=0;
+                *score=localAlpha;
+                break;
+            case ChError_CheckMate:
+                localAlpha=MATE_SCORE;
+                *score-=localAlpha;
+                break;
+            default:
+                break;
+        }
+        list->nextFree=offset;
+        return hr;
     }
-    int localAlpha=-100000;
-    int illegalMoves=0;
-    ChError hr=ChError_OK;
+  
     
     if((hr=probe(board->zobrist, depth, &localAlpha))){
         //not in table
     }else{
        *score-=localAlpha;
-        return hr;
+       return hr;
     }
+   
     
-    int offset=list->nextFree;
     hr=generateMoves(board, board->colorToPlay, list);
-    if(hr){
-        freeMoveList(list);
+    switch(hr){
+        case ChError_OK:
+            break;
+        case ChError_StaleMate:
+            list->nextFree=offset;
+            localAlpha=0;
+            *score-=localAlpha;
+            break;
+        case ChError_CheckMate:
+            
+            list->nextFree=offset;
+            localAlpha=MATE_SCORE;
+            *score-=localAlpha;
+            break;
+        default:
+            return hr;
+            break;
+    }
+
+    if(board->staleMateMoves>=50){
+        list->nextFree=offset;
+        localAlpha=0;
+        *score-=localAlpha;
         return hr;
     }
     
     for(int moveNumber=offset;moveNumber<list->nextFree;moveNumber++){
         Move* move=&list->array[moveNumber];
-
         hr=doMove(board,move);
+        if(hr){return hr; }
         
-        if(hr){
-            freeMoveList(list);
-            return hr;
-        }
         int tempScore=0;
         hr=alphaBetaRecurse(board, depth-1, -beta,-alpha, &tempScore,list);
-        if(hr==ChError_IllegalMove){
-            illegalMoves++;
-            hr=undoMove(board, move);
-            if(hr){
-                freeMoveList(list);
-                return hr;
-            }
-            continue;
-        }else if(hr){
-            freeMoveList(list);
+        if(hr!=ChError_OK&&hr!=ChError_StaleMate&&hr!=ChError_CheckMate&&hr!=ChError_RepetitionDraw){
             return hr;
         }
 
         hr=undoMove(board, move);
-        if(hr){
-            freeMoveList(list);
-            return hr;
-        }
+        if(hr){return hr; }
+        
         if(tempScore>localAlpha){
             if(tempScore>alpha){
                 alpha=tempScore;                  
             }
             localAlpha=tempScore;
             if(alpha>=beta)
-                break;
+               break;
         }
     }
-    if(illegalMoves>=(list->nextFree-1)-offset){
-        if(isCheck(board, board->colorToPlay)){
-           localAlpha=-1000000;
-        }else{
-           localAlpha=0;
-        }
-    }
+
+
     list->nextFree=offset;
-  
     addKeyToTable(board->zobrist, depth, localAlpha);
-    
     *score-=localAlpha;
     
     return hr;
@@ -137,44 +154,39 @@ static ChError alphaBetaRecurse(ChessBoard* board, int depth, int alpha, int bet
 
 ChError doAiMove(ChessBoard* board, Properties* aiProperties){
    
-    int alpha=-100000;
-    int beta = 100000;
+    int alpha=-INIT_ALPHA;
+    int beta = INIT_ALPHA;
     MoveList list={0};
     Move bestMove;
+    bestMove.from=-5;
     ChError hr=ChError_OK;
-    
-   
-    
+
     hr=generateMoves(board, board->colorToPlay, &list);
-    if(hr){
-        freeMoveList(&list);
-        return hr;
+    //if checkmate or stalemate return
+    switch(hr){
+        case ChError_OK:
+            break;
+        case ChError_StaleMate:
+        case ChError_CheckMate:
+        default:
+            freeMoveList(&list);
+            return hr;
+            break;
     }
-        
-    int illegalMoveCounter=0;
+
+    //iterative deepening
     for(int depth=1;depth<=aiProperties->depth;depth++){
-        if(illegalMoveCounter>=list.nextFree){
-            Color color=board->colorToPlay;
-            if(isCheck(board, color))
-                printf("%s {%s}\n",color==WHITE?"0-1":"1-0",color==WHITE?"Black mates":"White mates");
-            else
-                printf("%s {%s}\n","1/2-1/2", "Stalemate");
-        }
-        illegalMoveCounter=0;
+        
         for(int moveNumber=0;moveNumber<list.nextFree;moveNumber++){
-            
             hr=doMove(board,&list.array[moveNumber]);
             if(hr){
                 freeMoveList(&list);
                 return hr;
             }
+            
             int tempScore=0;
-
             hr=alphaBetaRecurse(board, depth-1, -beta,-alpha,&tempScore,&list);
-
-            if(hr==ChError_IllegalMove){
-                illegalMoveCounter++;
-            }else if(hr){
+            if(hr!=ChError_OK&&hr!=ChError_StaleMate&&hr!=ChError_CheckMate&&hr!=ChError_RepetitionDraw){
                 freeMoveList(&list);
                 return hr;
             }
@@ -188,19 +200,42 @@ ChError doAiMove(ChessBoard* board, Properties* aiProperties){
             if(tempScore>alpha){
                 bestMove= list.array[moveNumber];
                 alpha=tempScore;
-                //printf("%dbest move score %d\n",depth,alpha);
-                if(alpha>=100000)
+                char charMove[6];    
+                moveToChar(&bestMove, charMove);
+                printf("%dbest move score %d with move %s\n",depth,alpha,charMove);
+                if(alpha>(-MATE_SCORE-1000))
                     break;
+                
             }
         }
-         alpha=-100000;
-         beta = 100000;
+        if(alpha>(-MATE_SCORE-1000))
+            break;
+         alpha=-INIT_ALPHA;
+         beta = INIT_ALPHA;
     }
+   
+    //print move
     char charMove[6];
     moveToChar(&bestMove, charMove);
     printf("move %s\n",charMove);
     doMove(board, &bestMove);
     printBoardE(board);
+    
+    //Check detection for user
+    hr=generateMoves(board, board->colorToPlay, &list);
+    //if checkmate or stalemate return
+    switch(hr){
+        case ChError_OK:
+            break;
+        case ChError_StaleMate:
+        case ChError_CheckMate:
+        default:
+            freeMoveList(&list);
+            return hr;
+            break;
+    }
+    
+    
     freeMoveList(&list);
     return hr;
 }

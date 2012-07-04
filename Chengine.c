@@ -36,7 +36,7 @@ void printMoveList(MoveList* moveList){
     for(int i=0;i<moveList->nextFree;i++){
         moveToChar(&moveList->array[i],charMove);
         
-        printf("%d %s\n",i,charMove);
+        printf("%d. %s - ",i,charMove);
     }
 }
 

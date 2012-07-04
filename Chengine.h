@@ -36,7 +36,9 @@ typedef enum {
     ChError_RepetitionDraw,
     ChError_NotInTable,
     ChError_DepthToLow,
-    ChError_IllegalMove
+    ChError_IllegalMove,
+    ChError_CheckMate,
+    ChError_StaleMate
 } ChError;
 
 typedef struct PieceInfo{

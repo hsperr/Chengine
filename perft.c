@@ -8,9 +8,6 @@
 
 #include "perft.h"
 long perft_rec(ChessBoard* board, Color sideToMove, int depth, MoveList* list){
-    if(isCheck(board, board->colorToPlay==WHITE?BLACK:WHITE))
-        return 0;
-    
     if(depth==0)
         return 1;
     
@@ -65,8 +62,6 @@ long perft(ChessBoard* board, int depth){
 }
 
 long perft_hash_rec(ChessBoard* board, Color sideToMove, int depth, MoveList* list){
-    if(isCheck(board, board->colorToPlay==WHITE?BLACK:WHITE))
-        return 0;
     
     if(depth==0)
         return 1;
