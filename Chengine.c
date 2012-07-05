@@ -55,7 +55,22 @@ void printError(ChError hr){
         case ChError_Resources:
             printf("Resources\n");
             break;
+        case ChError_NotInTable:
+             printf("Value not in table\n");
+            break;
+        case ChError_DepthToLow:
+             printf("Depth was too low\n");
+            break;
+        case ChError_IllegalMove:
+             printf("Illegal move\n");
+            break;
+        case ChError_CheckMate:
+             printf("Check mate!\n");
+            break;
+        case ChError_StaleMate:
+             printf("Stale mate!\n");
+            break;
         default:
-            printf("No Error\n");
+            printf("No Error: %d\n",hr);
     }
 }

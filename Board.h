@@ -22,9 +22,8 @@ ChError generateMoves(ChessBoard* board,enum Color color, MoveList* moveList);
 ChError generateSortedMoves(ChessBoard* board,enum Color color, MoveList* moveList);
 ChError generateMoveForPosition(ChessBoard* board,const PieceInfo* pieceInfo, MoveList* moveList);
 
-ChError doMove(ChessBoard* board, Move* move);
-ChError undoMove(ChessBoard* board, Move* move);
-ChError undoLastMove(ChessBoard* board);
+ChError doMove(ChessBoard* board, Move* move, History* history);
+ChError undoMove(ChessBoard* board, Move* move, History* history);
 
 
 

@@ -18,7 +18,7 @@ typedef struct TableEntry{
 }TableEntry;
 
 u_int64_t BLACKTOPLAY;
-u_int64_t CASTLING_RIGHTS[4]; //KQkq
+u_int64_t CASTLING_RIGHTS[16]; //KQkq
 u_int64_t PIECES[6][2][64];
 u_int64_t enPassant[8];
 
@@ -38,7 +38,7 @@ ChError initTable(long size, long inMask){
     
      BLACKTOPLAY=rand64();
    
-    for(int i=0;i<4;i++){
+    for(int i=0;i<16;i++){
         CASTLING_RIGHTS[i]=rand64();
     }
     
@@ -83,18 +83,9 @@ u_int64_t getZobristHash(ChessBoard* board){
         }
         
     }
-    if(board->rights[WHITE].queenCastlingPossible){
-        zobrist^=CASTLING_RIGHTS[1];
-    }
-    if(board->rights[WHITE].kingCastlingPossible){
-        zobrist^=CASTLING_RIGHTS[0];
-    }
-    if(board->rights[BLACK].queenCastlingPossible){
-        zobrist^=CASTLING_RIGHTS[3];
-    }
-    if(board->rights[BLACK].kingCastlingPossible){
-        zobrist^=CASTLING_RIGHTS[2];
-    }
+    
+    zobrist^=CASTLING_RIGHTS[board->castlingRights];
+   
     
     if(board->enPassantSquare>=0){ //is hex like 0x54
         int col=(board->enPassantSquare&0x0F);
@@ -117,7 +108,7 @@ ChError probe(u_int64_t zobrist, int depth,int* score){
     
     if(entry->zobrist==zobrist){
         //we found that position before
-        if(entry->depth>=depth){
+        if(entry->depth==depth){
             *score=entry->score;
             return ChError_OK;
         }else{

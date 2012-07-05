@@ -53,25 +53,26 @@ enum MoveType{
     PAWNDOUBLE,
     PROMOTION,
     ENPASSANT,
-    KINGCASTLE,
-    QUEENCASTLE
+    WKINGCASTLE,
+    WQUEENCASTLE,
+    BKINGCASTLE,
+    BQUEENCASTLE
 }MoveType;
+
+typedef struct History{
+    //capture
+    int previousEnPassantSquare;
+    PieceInfo* capturedPiece;//also used for enpassant
+    int oldRepetitionMoves;
+    int castlingRights;
+    u_int64_t zobrist;
+}History;
 
 typedef struct Move{
     int from;
     int to;
-    
-    //capture
-    int previousEnPassantSquare;
-    PieceInfo* pieceToSquareIndexTo;//also used for enpassant
     PIECE promote;
     enum MoveType moveType;
-    int oldStaleMateMoves;
-    
-    int whiteKingCastlingRights;
-    int whiteQueenCastlingRights;
-    int blackKingCastlingRights;
-    int blackQueenCastlingRights;
 }Move;
 
 typedef struct MoveList{
@@ -95,11 +96,6 @@ enum {
     queen
 };
 
-typedef struct Rights{
-    int kingCastlingPossible;
-    int queenCastlingPossible;
-}Rights;
-
 typedef struct ChessBoard{
     //size of fixed 16x8 bit
     //00 01 02 03 04 05 06 07   08 09 0A 0B 0C 0D 0E 0F
@@ -119,11 +115,11 @@ typedef struct ChessBoard{
     PieceInfo blackToSquare[16];
     PieceInfo whiteToSquare[16];
     
-    Rights rights[2];
-    int enPassantSquare;
     Color colorToPlay;
     MoveList playedMoves;
-    int staleMateMoves;
+    int enPassantSquare;
+    int repetitionMoves;
+    int castlingRights;
     u_int64_t zobrist;
 }ChessBoard;
 

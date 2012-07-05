@@ -18,9 +18,9 @@ int main (int argc, const char * argv[])
     
     Game newGame;
     ChError hr;
-    initTable(67108864, 0x3FFFFFF);
+    initTable(1048576, 0xFFFFF);
     
-    newGame.isRunning=1;
+    newGame.isRunning=0;
     newGame.aiPlayer[WHITE].depth=10;
     newGame.aiPlayer[WHITE].timelimit=500;
     newGame.aiPlayer[WHITE].isAi=1;
@@ -30,10 +30,11 @@ int main (int argc, const char * argv[])
     newGame.aiPlayer[BLACK].isAi=0;
     
     if((hr=initBoard(&newGame.board))){
+        printf("After init board:");
         printError(hr);
     }
 
-    readFENString(&newGame.board, "4r3/7q/nb2prRp/pk1p3P/3P4/P7/1P2N1P1/1K1B1N2 w - - 0 1");
+    //readFENString(&newGame.board, "k7/8/8/3p4/2P1P3/8/8/K7 w - - 0 1");
          printBoardE(&newGame.board);
     while(newGame.isRunning){
             
@@ -59,6 +60,7 @@ int main (int argc, const char * argv[])
                         newGame.aiPlayer[WHITE].isAi=0;
                     break;
                 default:
+                     printf("After doAiMove:");
                     printError(hr);
                     break;
             }
@@ -74,7 +76,7 @@ int main (int argc, const char * argv[])
     printf("Perfting\n");
     
    // readFENString(&newGame.board, "rnbqkbnr/1ppppppp/p7/1B6/4P3/8/PPPP1PPP/RNBQK1NR b KQkq - 1 2");
- /*  printBoardE(&newGame.board);
+   printBoardE(&newGame.board);
     perft(&newGame.board,1);
     perft(&newGame.board,2);
     perft(&newGame.board,3);
@@ -96,7 +98,7 @@ int main (int argc, const char * argv[])
 
     perft_hash(&newGame.board,6);
     perft_hash(&newGame.board,7);
-    perft_hash(&newGame.board,8);*/
+    perft_hash(&newGame.board,8);
     
     
     freeTable();

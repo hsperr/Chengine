@@ -112,7 +112,7 @@ static ChError alphaBetaRecurse(ChessBoard* board, int depth, int alpha, int bet
             break;
     }
 
-    if(board->staleMateMoves>=50){
+    if(board->repetitionMoves>=50){
         list->nextFree=offset;
         localAlpha=0;
         *score-=localAlpha;
@@ -120,8 +120,9 @@ static ChError alphaBetaRecurse(ChessBoard* board, int depth, int alpha, int bet
     }
     
     for(int moveNumber=offset;moveNumber<list->nextFree;moveNumber++){
+        History h={0};
         Move* move=&list->array[moveNumber];
-        hr=doMove(board,move);
+        hr=doMove(board,move,&h);
         if(hr){return hr; }
         
         int tempScore=0;
@@ -130,7 +131,7 @@ static ChError alphaBetaRecurse(ChessBoard* board, int depth, int alpha, int bet
             return hr;
         }
 
-        hr=undoMove(board, move);
+        hr=undoMove(board, move,&h);
         if(hr){return hr; }
         
         if(tempScore>localAlpha){
@@ -178,7 +179,8 @@ ChError doAiMove(ChessBoard* board, Properties* aiProperties){
     for(int depth=1;depth<=aiProperties->depth;depth++){
         
         for(int moveNumber=0;moveNumber<list.nextFree;moveNumber++){
-            hr=doMove(board,&list.array[moveNumber]);
+            History h={0};
+            hr=doMove(board,&list.array[moveNumber],&h);
             if(hr){
                 freeMoveList(&list);
                 return hr;
@@ -191,7 +193,7 @@ ChError doAiMove(ChessBoard* board, Properties* aiProperties){
                 return hr;
             }
 
-            hr=undoMove(board, &list.array[moveNumber]);
+            hr=undoMove(board, &list.array[moveNumber],&h);
 
             if(hr){
                 freeMoveList(&list);
@@ -213,12 +215,12 @@ ChError doAiMove(ChessBoard* board, Properties* aiProperties){
          alpha=-INIT_ALPHA;
          beta = INIT_ALPHA;
     }
-   
+   History h={0};
     //print move
     char charMove[6];
     moveToChar(&bestMove, charMove);
     printf("move %s\n",charMove);
-    doMove(board, &bestMove);
+    doMove(board, &bestMove,&h);
     printBoardE(board);
     
     //Check detection for user

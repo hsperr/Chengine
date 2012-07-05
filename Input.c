@@ -119,7 +119,7 @@ void checkForInput(Game* game){
                 //user wants a hint"
             }else if(strncmp(input,"undo",4)==0){
                 // undo move, engine switches color
-                undoLastMove(&game->board);
+                printf("Unknown command\n");
                 
             }else if(strncmp(input,"remove",6)==0){
                 // 2x undo
@@ -147,6 +147,7 @@ void checkForInput(Game* game){
                         if(input[2]>='a'&&input[2]<='h'){
                             if(input[3]>='1'&&input[3]<='8'){
                                 Move move={-5};
+                                History history={0};
                                 move.from=(int)(input[0]-'a')+0x10*(7-(int)(input[1]-'1'));
                                 move.to=(int)(input[2]-'a')+0x10*(7-(int)(input[3]-'1'));
                                 if(input[4]=='q')
@@ -159,7 +160,7 @@ void checkForInput(Game* game){
                                     move.promote=knight;
                                 
                                 if(isLegal(&game->board,&move)){
-                                    doMove(&game->board, &move);
+                                    doMove(&game->board, &move,&history);
                                     printBoardE(&game->board);
                                     return;
                                 }else{
