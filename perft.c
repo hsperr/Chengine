@@ -63,7 +63,7 @@ long perft(ChessBoard* board, int depth){
     }
     freeMoveList(&moveList);
     double timeNeeded=((double)(clock()-time)/CLOCKS_PER_SEC);
-    printf("Found %ld moves in %f sec makes %f moves/sec\n",moved,timeNeeded,(float)(moved/timeNeeded));
+    printf("Found %ld moves in %f sec makes %f Million Moves/sec\n",moved,timeNeeded,(float)(moved/timeNeeded)/1000000);
     
     return moved;
 }
@@ -138,7 +138,7 @@ long perft_hash(ChessBoard* board, int depth){
   
     freeMoveList(&moveList);
     double timeNeeded=((double)(clock()-time)/CLOCKS_PER_SEC);
-    printf("Found %ld moves in %f sec makes %f moves/sec\n",moved,timeNeeded,(float)(moved/timeNeeded));
+    printf("Found %ld moves in %f sec makes %f Million Moves/sec\n",moved,timeNeeded,(float)(moved/timeNeeded)/1000000);
     
     return moved;
 }

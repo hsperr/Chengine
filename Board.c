@@ -459,69 +459,65 @@ int isAttacked(ChessBoard* board, int position, enum Color attackerColor){
         int index=(nextPiece.location-position)+128;
         int attack=ATTACK_ARRAY[index];
         
-        if(attack==0||nextPiece.piece==pawn)
+        if(attack==0||nextPiece.piece==pawn||nextPiece.location==NO_LOCATION)
             continue;
         
-        if(nextPiece.piece==knight){
-            if(attack==ATTACK_N){
-                return 1;
-            }
-            continue;
-        }
-        if(nextPiece.piece==king){
-            if(attack==ATTACK_KQR||attack==ATTACK_KQBwP||attack==ATTACK_KQBbP){
-                return 1;
-            }
-            continue;
-        }
-        if(nextPiece.piece==queen){
-            if(attack==ATTACK_KQR||attack==ATTACK_KQBwP||attack==ATTACK_KQBbP||attack==ATTACK_QB||attack==ATTACK_QR){
-                int delta=DELTA_ARRAY[index];
-                int nextPosition=position+delta;
-                while(IS_ON_BOARD(nextPosition)){
-                    if(nextPosition==nextPiece.location)
-                        return 1;
-                    if(board->tiles[nextPosition])
-                        break;
+        switch(nextPiece.piece){
+                case knight:
+                if(attack==ATTACK_N){
+                    return 1;
+                }
+                break;
+            case king:
+                if(attack==ATTACK_KQR||attack==ATTACK_KQBwP||attack==ATTACK_KQBbP){
+                    return 1;
+                }
+                break;
+            case queen:
+                if(attack==ATTACK_KQR||attack==ATTACK_KQBwP||attack==ATTACK_KQBbP||attack==ATTACK_QB||attack==ATTACK_QR){
+                    int delta=DELTA_ARRAY[index];
+                    int nextPosition=position+delta;
+                    while(IS_ON_BOARD(nextPosition)){
+                        if(nextPosition==nextPiece.location)
+                            return 1;
+                        if(board->tiles[nextPosition])
+                            break;
+                        
+                        nextPosition+=delta;
+                    }
                     
-                    nextPosition+=delta;
                 }
-                
-            }
-            continue;
-        }
-        if(nextPiece.piece==rook){
-            if(attack==ATTACK_KQR||attack==ATTACK_QR){
-                int delta=DELTA_ARRAY[index];
-                int nextPosition=position+delta;
-                while(IS_ON_BOARD(nextPosition)){
-                    if(nextPosition==nextPiece.location)
-                        return 1;
-                    if(board->tiles[nextPosition])
-                        break;
+                break;
+            case rook:
+                if(attack==ATTACK_KQR||attack==ATTACK_QR){
+                    int delta=DELTA_ARRAY[index];
+                    int nextPosition=position+delta;
+                    while(IS_ON_BOARD(nextPosition)){
+                        if(nextPosition==nextPiece.location)
+                            return 1;
+                        if(board->tiles[nextPosition])
+                            break;
+                        
+                        nextPosition+=delta;
+                    }
                     
-                    nextPosition+=delta;
                 }
-                
-            }
-            continue;
+                break;
+            case bishop:
+                if(attack==ATTACK_KQBwP||attack==ATTACK_KQBbP||attack==ATTACK_QB){
+                    int delta=DELTA_ARRAY[index];
+                    int nextPosition=position+delta;
+                    while(IS_ON_BOARD(nextPosition)){
+                        if(nextPosition==nextPiece.location)
+                            return 1;
+                        if(board->tiles[nextPosition])
+                            break;
+                        nextPosition+=delta;
+                    }
+                    
+                }
+                break;
         }
-        
-        if(nextPiece.piece==bishop){
-            if(attack==ATTACK_KQBwP||attack==ATTACK_KQBbP||attack==ATTACK_QB){
-                int delta=DELTA_ARRAY[index];
-                int nextPosition=position+delta;
-                while(IS_ON_BOARD(nextPosition)){
-                    if(nextPosition==nextPiece.location)
-                        return 1;
-                    if(board->tiles[nextPosition])
-                        break;
-                    nextPosition+=delta;
-                }
-                
-            }
-            continue;
-        } 
     }
     return 0;
 }
@@ -559,8 +555,8 @@ ChError doMove(ChessBoard* board, Move* move, History* history){
     board->castlingRights&=castlingRights[move->from];
     board->castlingRights&=castlingRights[move->to];
     if(board->castlingRights!=history->castlingRights){
-        updateCastleRightZobrist(&board->zobrist, board->castlingRights);
-        updateCastleRightZobrist(&board->zobrist, board->castlingRights);
+        updateCastleRightZobrist(&board->zobrist, history->castlingRights);//remove former rights
+        updateCastleRightZobrist(&board->zobrist, board->castlingRights);//add the new ones
     }
     
     
@@ -721,7 +717,6 @@ ChError undoMove(ChessBoard* board,Move* move, History* history){
 }
 int isCheck(ChessBoard* board, Color color){
     PieceInfo* myPieces=color==WHITE?board->whiteToSquare:board->blackToSquare;
-    
     return isAttacked(board, myPieces[0].location, color==WHITE?BLACK:WHITE);
     
 }
