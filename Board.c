@@ -463,8 +463,7 @@ ChError getPinnedPiecePositions(ChessBoard* board, enum Color color, Pin* pieceL
                 if(attack==ATTACK_KQR||attack==ATTACK_KQBwP||attack==ATTACK_KQBbP||attack==ATTACK_QB||attack==ATTACK_QR){
                     int delta=DELTA_ARRAY[index];
                     int nextPosition=nextPiece.location-delta;
-                    int foundPinnedPosition=0;
-                    int enpassantpin=0;
+                    int foundPinnedPosition=NO_LOCATION;
                     while(IS_ON_BOARD(nextPosition)){
                         if(nextPosition==position)
                             break;
@@ -472,21 +471,12 @@ ChError getPinnedPiecePositions(ChessBoard* board, enum Color color, Pin* pieceL
                         if(board->tiles[nextPosition]){
                             if(board->tiles[nextPosition]->color!=color){
                                 //mypiece
-                                if(foundPinnedPosition&&board->tiles[nextPosition]->piece==pawn&&board->tiles[foundPinnedPosition]->piece==pawn){
-                                    enpassantpin=1;
-                                }else if(!foundPinnedPosition&&board->tiles[nextPosition]->piece==pawn){
-                                    if(board->tiles[nextPosition-delta]->piece==pawn){
-                                        enpassantpin=1;
-                                        foundPinnedPosition=nextPosition-delta;
-                                    }
-                                }else{
-                                    foundPinnedPosition=0;
-                                }
+                                foundPinnedPosition=NO_LOCATION;
                                 break;
                             }else{
-                                if(foundPinnedPosition!=0){
+                                if(foundPinnedPosition!=NO_LOCATION){
                                     //blocked by two pieces
-                                    foundPinnedPosition=0;
+                                    foundPinnedPosition=NO_LOCATION;
                                     break;
                                 }else{
                                     //piece is pinned
@@ -501,10 +491,8 @@ ChError getPinnedPiecePositions(ChessBoard* board, enum Color color, Pin* pieceL
                     if(foundPinnedPosition){
                         pieceList[pinnedPieces].from=foundPinnedPosition;
                         pieceList[pinnedPieces].to=nextPiece.location;
-                        pieceList[pinnedPieces].delta=delta;
-                        pieceList[pinnedPieces].enpassantpin=enpassantpin;
-                        
-                        foundPinnedPosition=0;
+                        pieceList[pinnedPieces].delta=delta;                        
+                        foundPinnedPosition=NO_LOCATION;
                         pinnedPieces++;
                     }
                     
@@ -514,8 +502,7 @@ ChError getPinnedPiecePositions(ChessBoard* board, enum Color color, Pin* pieceL
                 if(attack==ATTACK_KQR||attack==ATTACK_QR){
                     int delta=DELTA_ARRAY[index];
                     int nextPosition=nextPiece.location-delta;
-                    int foundPinnedPosition=0;
-                    int enpassantpin=0;
+                    int foundPinnedPosition=NO_LOCATION;
                     while(IS_ON_BOARD(nextPosition)){
                         if(nextPosition==position)
                             break;
@@ -523,21 +510,13 @@ ChError getPinnedPiecePositions(ChessBoard* board, enum Color color, Pin* pieceL
                         if(board->tiles[nextPosition]){
                             if(board->tiles[nextPosition]->color!=color){
                                 //mypiece
-                                if(foundPinnedPosition&&board->tiles[nextPosition]->piece==pawn&&board->tiles[foundPinnedPosition]->piece==pawn){
-                                    enpassantpin=1;
-                                }else if(!foundPinnedPosition&&board->tiles[nextPosition]->piece==pawn){
-                                    if(board->tiles[nextPosition-delta]&&board->tiles[nextPosition-delta]->piece==pawn){
-                                        enpassantpin=1;
-                                        foundPinnedPosition=nextPosition-delta;
-                                    }
-                                }else{
-                                    foundPinnedPosition=0;
-                                }
+                                    foundPinnedPosition=NO_LOCATION;
+                                
                                 break;
                             }else{
-                                if(foundPinnedPosition!=0){
+                                if(foundPinnedPosition!=NO_LOCATION){
                                     //blocked by two pieces
-                                    foundPinnedPosition=0;
+                                    foundPinnedPosition=NO_LOCATION;
                                     break;
                                 }else{
                                     //piece is pinned
@@ -553,9 +532,8 @@ ChError getPinnedPiecePositions(ChessBoard* board, enum Color color, Pin* pieceL
                         pieceList[pinnedPieces].from=foundPinnedPosition;
                         pieceList[pinnedPieces].to=nextPiece.location;
                         pieceList[pinnedPieces].delta=delta;
-                        pieceList[pinnedPieces].enpassantpin=enpassantpin;
 
-                        foundPinnedPosition=0;
+                        foundPinnedPosition=NO_LOCATION;
                         pinnedPieces++;
                     }
                     
@@ -565,8 +543,7 @@ ChError getPinnedPiecePositions(ChessBoard* board, enum Color color, Pin* pieceL
                 if(attack==ATTACK_KQBwP||attack==ATTACK_KQBbP||attack==ATTACK_QB){
                     int delta=DELTA_ARRAY[index];
                     int nextPosition=nextPiece.location-delta;
-                    int foundPinnedPosition=0;
-                    int enpassantpin=0;
+                    int foundPinnedPosition=NO_LOCATION;
                     while(IS_ON_BOARD(nextPosition)){
                         if(nextPosition==position)
                             break;
@@ -574,21 +551,13 @@ ChError getPinnedPiecePositions(ChessBoard* board, enum Color color, Pin* pieceL
                         if(board->tiles[nextPosition]){
                             if(board->tiles[nextPosition]->color!=color){
                                 //mypiece
-                                if(foundPinnedPosition&&board->tiles[nextPosition]->piece==pawn&&board->tiles[foundPinnedPosition]->piece==pawn){
-                                    enpassantpin=1;
-                                }else if(!foundPinnedPosition&&board->tiles[nextPosition]->piece==pawn){
-                                    if(board->tiles[nextPosition-delta]->piece==pawn){
-                                        enpassantpin=1;
-                                        foundPinnedPosition=nextPosition-delta;
-                                    }
-                                }else{
-                                    foundPinnedPosition=0;
-                                }
+                                foundPinnedPosition=NO_LOCATION;
+                            
                                 break;
                             }else{
-                                if(foundPinnedPosition!=0){
+                                if(foundPinnedPosition!=NO_LOCATION){
                                     //blocked by two pieces
-                                    foundPinnedPosition=0;
+                                    foundPinnedPosition=NO_LOCATION;
                                     break;
                                 }else{
                                     //piece is pinned
@@ -604,9 +573,9 @@ ChError getPinnedPiecePositions(ChessBoard* board, enum Color color, Pin* pieceL
                         pieceList[pinnedPieces].from=foundPinnedPosition;
                         pieceList[pinnedPieces].to=nextPiece.location;
                         pieceList[pinnedPieces].delta=delta;
-                        pieceList[pinnedPieces].enpassantpin=enpassantpin;
+
                         
-                        foundPinnedPosition=0;
+                        foundPinnedPosition=NO_LOCATION;
                         pinnedPieces++;
                     }
                     
@@ -1014,17 +983,12 @@ static ChError addMove(ChessBoard* board,int from, int to, PIECE promotion, enum
     ChError hr=ChError_OK;
     
     //if piece is pinned it can only move if it hits the pinning piece
-    if(usePins){
+    if(usePins&&!type==ENPASSANT){
         for(int i=0;i<9;i++){
             if(pinnedPieces[i].from!=NO_LOCATION){
                 if(from==pinnedPieces[i].from){
                     if(to!=pinnedPieces[i].to){
-                        if(pinnedPieces[i].enpassantpin)
-                            if(type==ENPASSANT)
-                                return hr;
-                            else
-                                break;
-                        
+                                               
                         int delta=(from-to);
                         if((pinnedPieces[i].delta==1||pinnedPieces[i].delta==-1)&&(delta!=pinnedPieces[i].delta))
                            return hr;

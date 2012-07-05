@@ -17,7 +17,6 @@ typedef struct Pin{
     char from;
     char to;
     char delta;
-    char enpassantpin;
 }Pin;
 
 ChError initBoard(ChessBoard* board);
