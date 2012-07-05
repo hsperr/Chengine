@@ -33,6 +33,7 @@ long perft_rec(ChessBoard* board, Color sideToMove, int depth, MoveList* list){
         doMove(board,moveToDo,&h);
         moves+=perft_rec(board,board->colorToPlay,depth-1,list);
         undoMove(board,moveToDo,&h);
+
     }
     list->nextFree=startOffset;
     return moves;
@@ -157,11 +158,12 @@ void divide(ChessBoard* board, int depth){
         printError(hr);
     for(int i=0;i<moveList.nextFree;i++){
         History h={0};
-        doMove(board,&moveList.array[i],&h);
+        Move* move=&moveList.array[i];
+        doMove(board, move, &h);
         iterationMoves=0;
         iterationMoves+=perft_rec(board,board->colorToPlay,depth-1, &moveList);
         moved+=iterationMoves;
-        undoMove(board,&moveList.array[i],&h);
+        undoMove(board,move,&h);
         
         moveToChar(&moveList.array[i],moveAsChar);
         printf("For move %s I found %ld moves after %f sec .\n",moveAsChar,iterationMoves,(float)((clock()-time)/CLOCKS_PER_SEC));

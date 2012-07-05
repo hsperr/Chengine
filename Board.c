@@ -55,14 +55,14 @@ static const int ATTACK_ARRAY[] =
 
 
 static const char castlingRights[]={
-    0xe,0xf,0xf,0xf,0x0,0xf,0xf,0xd,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,
+    0xe,0xf,0xf,0xf,0xC,0xf,0xf,0xd,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,
     0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,
     0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,
     0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,
     0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,
     0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,
     0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,
-    0xb,0xf,0xf,0xf,0x0,0xf,0xf,0x7,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf
+    0xb,0xf,0xf,0xf,0x3,0xf,0xf,0x7,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf
 };
 
 static inline int IS_ON_BOARD(int x)   {return (x&0x88)==0;};
@@ -443,6 +443,182 @@ void printBoardE(ChessBoard* board){
     printf("\n");
 }
 
+ChError getPinnedPiecePositions(ChessBoard* board, enum Color color, Pin* pieceList){
+    ChError hr=ChError_OK;
+    int position=color==WHITE?board->whiteToSquare[0].location:board->blackToSquare[0].location;
+    PieceInfo* attackerPieces=color==WHITE?board->blackToSquare:board->whiteToSquare;
+    int pinnedPieces=0;
+    
+    for(int i=0;i<16;i++){
+        PieceInfo nextPiece=attackerPieces[i];
+        int index=(nextPiece.location-position)+128;
+        int attack=ATTACK_ARRAY[index];
+        
+        if(attack==0||nextPiece.piece==pawn||nextPiece.location==NO_LOCATION)
+            continue;
+        
+        
+        switch(nextPiece.piece){
+            case queen:
+                if(attack==ATTACK_KQR||attack==ATTACK_KQBwP||attack==ATTACK_KQBbP||attack==ATTACK_QB||attack==ATTACK_QR){
+                    int delta=DELTA_ARRAY[index];
+                    int nextPosition=nextPiece.location-delta;
+                    int foundPinnedPosition=0;
+                    int enpassantpin=0;
+                    while(IS_ON_BOARD(nextPosition)){
+                        if(nextPosition==position)
+                            break;
+                        
+                        if(board->tiles[nextPosition]){
+                            if(board->tiles[nextPosition]->color!=color){
+                                //mypiece
+                                if(foundPinnedPosition&&board->tiles[nextPosition]->piece==pawn&&board->tiles[foundPinnedPosition]->piece==pawn){
+                                    enpassantpin=1;
+                                }else if(!foundPinnedPosition&&board->tiles[nextPosition]->piece==pawn){
+                                    if(board->tiles[nextPosition-delta]->piece==pawn){
+                                        enpassantpin=1;
+                                        foundPinnedPosition=nextPosition-delta;
+                                    }
+                                }else{
+                                    foundPinnedPosition=0;
+                                }
+                                break;
+                            }else{
+                                if(foundPinnedPosition!=0){
+                                    //blocked by two pieces
+                                    foundPinnedPosition=0;
+                                    break;
+                                }else{
+                                    //piece is pinned
+                                    foundPinnedPosition=nextPosition;
+                                }
+                            }
+                        }
+                        
+                        
+                        nextPosition-=delta;
+                    }
+                    if(foundPinnedPosition){
+                        pieceList[pinnedPieces].from=foundPinnedPosition;
+                        pieceList[pinnedPieces].to=nextPiece.location;
+                        pieceList[pinnedPieces].delta=delta;
+                        pieceList[pinnedPieces].enpassantpin=enpassantpin;
+                        
+                        foundPinnedPosition=0;
+                        pinnedPieces++;
+                    }
+                    
+                }
+                break;
+            case rook:
+                if(attack==ATTACK_KQR||attack==ATTACK_QR){
+                    int delta=DELTA_ARRAY[index];
+                    int nextPosition=nextPiece.location-delta;
+                    int foundPinnedPosition=0;
+                    int enpassantpin=0;
+                    while(IS_ON_BOARD(nextPosition)){
+                        if(nextPosition==position)
+                            break;
+                        
+                        if(board->tiles[nextPosition]){
+                            if(board->tiles[nextPosition]->color!=color){
+                                //mypiece
+                                if(foundPinnedPosition&&board->tiles[nextPosition]->piece==pawn&&board->tiles[foundPinnedPosition]->piece==pawn){
+                                    enpassantpin=1;
+                                }else if(!foundPinnedPosition&&board->tiles[nextPosition]->piece==pawn){
+                                    if(board->tiles[nextPosition-delta]&&board->tiles[nextPosition-delta]->piece==pawn){
+                                        enpassantpin=1;
+                                        foundPinnedPosition=nextPosition-delta;
+                                    }
+                                }else{
+                                    foundPinnedPosition=0;
+                                }
+                                break;
+                            }else{
+                                if(foundPinnedPosition!=0){
+                                    //blocked by two pieces
+                                    foundPinnedPosition=0;
+                                    break;
+                                }else{
+                                    //piece is pinned
+                                    foundPinnedPosition=nextPosition;
+                                }
+                            }
+                        }
+                        
+                        
+                        nextPosition-=delta;
+                    }
+                    if(foundPinnedPosition){
+                        pieceList[pinnedPieces].from=foundPinnedPosition;
+                        pieceList[pinnedPieces].to=nextPiece.location;
+                        pieceList[pinnedPieces].delta=delta;
+                        pieceList[pinnedPieces].enpassantpin=enpassantpin;
+
+                        foundPinnedPosition=0;
+                        pinnedPieces++;
+                    }
+                    
+                }
+                break;
+            case bishop:
+                if(attack==ATTACK_KQBwP||attack==ATTACK_KQBbP||attack==ATTACK_QB){
+                    int delta=DELTA_ARRAY[index];
+                    int nextPosition=nextPiece.location-delta;
+                    int foundPinnedPosition=0;
+                    int enpassantpin=0;
+                    while(IS_ON_BOARD(nextPosition)){
+                        if(nextPosition==position)
+                            break;
+                        
+                        if(board->tiles[nextPosition]){
+                            if(board->tiles[nextPosition]->color!=color){
+                                //mypiece
+                                if(foundPinnedPosition&&board->tiles[nextPosition]->piece==pawn&&board->tiles[foundPinnedPosition]->piece==pawn){
+                                    enpassantpin=1;
+                                }else if(!foundPinnedPosition&&board->tiles[nextPosition]->piece==pawn){
+                                    if(board->tiles[nextPosition-delta]->piece==pawn){
+                                        enpassantpin=1;
+                                        foundPinnedPosition=nextPosition-delta;
+                                    }
+                                }else{
+                                    foundPinnedPosition=0;
+                                }
+                                break;
+                            }else{
+                                if(foundPinnedPosition!=0){
+                                    //blocked by two pieces
+                                    foundPinnedPosition=0;
+                                    break;
+                                }else{
+                                    //piece is pinned
+                                    foundPinnedPosition=nextPosition;
+                                }
+                            }
+                        }
+                        
+                        
+                        nextPosition-=delta;
+                    }
+                    if(foundPinnedPosition){
+                        pieceList[pinnedPieces].from=foundPinnedPosition;
+                        pieceList[pinnedPieces].to=nextPiece.location;
+                        pieceList[pinnedPieces].delta=delta;
+                        pieceList[pinnedPieces].enpassantpin=enpassantpin;
+                        
+                        foundPinnedPosition=0;
+                        pinnedPieces++;
+                    }
+                    
+                }
+                break;
+        }
+    }
+    
+    //printf("Pinned pieces %d\n",pinnedPieces);
+    return hr;
+}
+
 void generateAttackMap(ChessBoard* board, enum Color attackerColor){
     for(int i=0;i<127;i++){
         attackMap[i]=0;
@@ -453,7 +629,7 @@ void generateAttackMap(ChessBoard* board, enum Color attackerColor){
     int knightdeltas[]={-0x1F,-0x21,-0x12,-0x0E,0x1F,0x21,0x12,0x0E};
     int direction=attackerColor==WHITE?-1:1;
     PieceInfo* attackerPieces=attackerColor==WHITE?board->whiteToSquare:board->blackToSquare;
-        
+    
     for(int j=0;j<16;j++){
         PieceInfo nextPiece=attackerPieces[j];        
         switch(nextPiece.piece){
@@ -466,13 +642,13 @@ void generateAttackMap(ChessBoard* board, enum Color attackerColor){
             case knight:
                 for(int i=0;i<8;i++){
                     if(IS_ON_BOARD(nextPiece.location+knightdeltas[i]))
-                       attackMap[nextPiece.location+knightdeltas[i]]+=1;
+                        attackMap[nextPiece.location+knightdeltas[i]]+=1;
                 }
                 break;
             case king:
                 for(int i=0;i<8;i++){
-                   if(IS_ON_BOARD(nextPiece.location+kingdeltas[i]))
-                      attackMap[nextPiece.location+kingdeltas[i]]+=1;
+                    if(IS_ON_BOARD(nextPiece.location+kingdeltas[i]))
+                        attackMap[nextPiece.location+kingdeltas[i]]+=1;
                 }
                 break;
             case queen:
@@ -486,7 +662,7 @@ void generateAttackMap(ChessBoard* board, enum Color attackerColor){
                         
                         nextPosition+=delta;
                     }
-
+                    
                 }
                 for(int i=0;i<4;i++){
                     int delta=bishopdeltas[i];
@@ -536,15 +712,15 @@ void generateAttackMap(ChessBoard* board, enum Color attackerColor){
     }
     
     
- /*   for(int i =0;i<127;i++){
-        if((i&0x0F)==0x08)
-            printf("\n");
-        if((i&0x0F)>=0x08)
-            continue;
-        printf("%d ",attackMap[i]);
-
-    }
-    printf("\n");*/
+    /*   for(int i =0;i<127;i++){
+     if((i&0x0F)==0x08)
+     printf("\n");
+     if((i&0x0F)>=0x08)
+     continue;
+     printf("%d ",attackMap[i]);
+     
+     }
+     printf("\n");*/
 }
 
 int isAttacked(ChessBoard* board, int position, enum Color attackerColor){
@@ -570,7 +746,7 @@ int isAttacked(ChessBoard* board, int position, enum Color attackerColor){
             continue;
         
         switch(nextPiece.piece){
-                case knight:
+            case knight:
                 if(attack==ATTACK_N){
                     return 1;
                 }
@@ -632,14 +808,15 @@ int isAttacked(ChessBoard* board, int position, enum Color attackerColor){
 ChError doMove(ChessBoard* board, Move* move, History* history){
     if(board==NULL||move==NULL)
         return ChError_Arguments;
-    
+    assert(board->tiles[move->from]!=NULL);
     Color myColor=board->colorToPlay;
     PieceInfo* fromPiece=board->tiles[move->from];
-    
+   
     history->castlingRights=board->castlingRights;
     history->previousEnPassantSquare=board->enPassantSquare;
     history->oldRepetitionMoves=board->repetitionMoves;
     history->zobrist=board->zobrist;
+
     
     //capture piece
     if(board->tiles[move->to]!=0x0){
@@ -647,17 +824,19 @@ ChError doMove(ChessBoard* board, Move* move, History* history){
         removePieceZobrist(&board->zobrist,move->to, history->capturedPiece->piece,myColor==WHITE?BLACK:WHITE);
         board->tiles[move->to]=NULL;
         history->capturedPiece->location=NO_LOCATION;
-        
+      
     }
     
-    board->tiles[move->to]=board->tiles[move->from];
+    
     removePieceZobrist(&board->zobrist,move->from, board->tiles[move->from]->piece,myColor);
+    board->tiles[move->to]=board->tiles[move->from];
     board->tiles[move->from]=NULL;
     board->tiles[move->to]->location=move->to;
     addPieceZobrist(&board->zobrist,move->to, board->tiles[move->to]->piece,myColor);
     //reset enpassant
     board->enPassantSquare=NO_LOCATION;
     
+  
     
     board->castlingRights&=castlingRights[move->from];
     board->castlingRights&=castlingRights[move->to];
@@ -717,23 +896,25 @@ ChError doMove(ChessBoard* board, Move* move, History* history){
         case BQUEENCASTLE:
             assert(board->tiles[A8]!=NULL);  
             assert(board->tiles[A8]->piece==rook);
+            assert(board->tiles[A8]->color==BLACK);
             
             removePieceZobrist(&board->zobrist,board->tiles[A8]->location,rook,myColor);
             addPieceZobrist(&board->zobrist,move->to+0x01,rook,myColor);
             
             board->tiles[A8]->location=move->to+0x01;
-            board->tiles[move->to+0x01]=board->tiles[A1];
+            board->tiles[move->to+0x01]=board->tiles[A8];
             board->tiles[A8]=NULL;
             break;
             
         default:
             break;
     }
-    
+   
     //updateColor
     board->colorToPlay=board->colorToPlay==WHITE?BLACK:WHITE;
     switchColorZobrist(&board->zobrist);
     //update enpassant
+    
     setEnPassantZobrist(&board->zobrist, history->previousEnPassantSquare, board->enPassantSquare);
     
     addToMoveList(&board->playedMoves, move);
@@ -742,7 +923,6 @@ ChError doMove(ChessBoard* board, Move* move, History* history){
         board->repetitionMoves++;
     else
         board->repetitionMoves=0;
-
        
     return ChError_OK;
 }
@@ -750,7 +930,7 @@ ChError doMove(ChessBoard* board, Move* move, History* history){
 ChError undoMove(ChessBoard* board,Move* move, History* history){
     if(board==NULL||move==NULL)
         return ChError_Arguments;
-    
+        
     assert(board->tiles[move->to]!=NULL);
     board->colorToPlay=board->colorToPlay==WHITE?BLACK:WHITE;
     board->zobrist=history->zobrist;
@@ -764,26 +944,29 @@ ChError undoMove(ChessBoard* board,Move* move, History* history){
     board->tiles[move->from]->location=move->from;
     
     
+    if(move->moveType!=ENPASSANT){
+        if(history
+           ->capturedPiece){
+            board->tiles[move->to]=history->capturedPiece;
+            board->tiles[move->to]->location=move->to;
+        }
+    }
+    
     switch(move->moveType){
         case PAWNDOUBLE:
             break;
         case PROMOTION:
-             board->tiles[move->from]->piece=pawn;
-             board->tiles[move->from]->score=getPieceScore(pawn);
+            board->tiles[move->from]->piece=pawn;
+            board->tiles[move->from]->score=getPieceScore(pawn);
             break;
         case NORMAL:
-            if(history
-               ->capturedPiece){
-                board->tiles[move->to]=history->capturedPiece;
-                board->tiles[move->to]->location=move->to;
-            }
             break;
         case ENPASSANT:
             assert(history->capturedPiece!=NULL);
-            
-            board->tiles[move->from+COLUMN(move->to)-COLUMN(move->from)]=history->capturedPiece;
+            int index=move->from+COLUMN(move->to)-COLUMN(move->from);
+            board->tiles[index]=history->capturedPiece;
             board->tiles[move->from+COLUMN(move->to)-COLUMN(move->from)]->location=move->from+COLUMN(move->to)-COLUMN(move->from);
-
+            
             break;
         case WKINGCASTLE:
             assert(board->tiles[(move->to-0x01)]->piece==rook);
@@ -827,29 +1010,32 @@ int isCheck(ChessBoard* board, Color color){
     return isAttacked(board, myPieces[0].location, color==WHITE?BLACK:WHITE);
     
 }
-static ChError addMove(ChessBoard* board,int from, int to, PIECE promotion, enum MoveType type, MoveList* list){
+static ChError addMove(ChessBoard* board,int from, int to, PIECE promotion, enum MoveType type, MoveList* list, int usePins, Pin* pinnedPieces){
     ChError hr=ChError_OK;
     
-    PieceInfo* temp = board->tiles[to];
-    if(board->tiles[to])
-        board->tiles[to]->location=-1;
-    
-    board->tiles[to]=board->tiles[from];
-    board->tiles[from]->location=to;
-    board->tiles[from]=NULL;
-    
-    if(isCheck(board, board->colorToPlay)){
-        board->tiles[from]=board->tiles[to];
-        board->tiles[to]=temp;
-        if(temp)
-            board->tiles[to]->location=to;
-        board->tiles[from]->location=from;
-    }else{
-        board->tiles[from]=board->tiles[to];
-        board->tiles[to]=temp;
-        if(temp)
-            board->tiles[to]->location=to;
-        board->tiles[from]->location=from;
+    //if piece is pinned it can only move if it hits the pinning piece
+    if(usePins){
+        for(int i=0;i<9;i++){
+            if(pinnedPieces[i].from!=NO_LOCATION){
+                if(from==pinnedPieces[i].from){
+                    if(to!=pinnedPieces[i].to){
+                        if(pinnedPieces[i].enpassantpin)
+                            if(type==ENPASSANT)
+                                return hr;
+                            else
+                                break;
+                        
+                        int delta=(from-to);
+                        if((pinnedPieces[i].delta==1||pinnedPieces[i].delta==-1)&&(delta!=pinnedPieces[i].delta))
+                           return hr;
+                        if((delta%pinnedPieces[i].delta!=0))
+                            return hr;
+                    }
+                }
+            }else{
+                break;
+            }
+        }
         
         Move move={-5};
         move.from=from;
@@ -857,13 +1043,46 @@ static ChError addMove(ChessBoard* board,int from, int to, PIECE promotion, enum
         move.moveType=type;
         move.promote=promotion;
         hr=addToMoveList(list, &move);
+        
+    }else{ 
+        
+        
+        PieceInfo* temp = board->tiles[to];
+        if(board->tiles[to])
+            board->tiles[to]->location=-1;
+     
+        assert(board->tiles[from]);
+        board->tiles[to]=board->tiles[from];
+        board->tiles[from]->location=to;
+        board->tiles[from]=NULL;
+        
+        if(isCheck(board, board->colorToPlay)){
+            board->tiles[from]=board->tiles[to];
+            board->tiles[to]=temp;
+            if(temp)
+                board->tiles[to]->location=to;
+            board->tiles[from]->location=from;
+        }else{
+            board->tiles[from]=board->tiles[to];
+            board->tiles[to]=temp;
+            if(temp)
+                board->tiles[to]->location=to;
+            board->tiles[from]->location=from;
+            
+            Move move={-5};
+            move.from=from;
+            move.to=to;
+            move.moveType=type;
+            move.promote=promotion;
+            hr=addToMoveList(list, &move);
+        }
     }
     
     return hr;
 }
 
 
-ChError generateMoveForPosition(ChessBoard* board,const PieceInfo* pieceInfo, MoveList* moveList){
+ChError generateMoveForPosition(ChessBoard* board,const PieceInfo* pieceInfo, MoveList* moveList, int usePins, Pin* pinnedPieces){
     int rookdeltas[]={-0x01,0x01,-0x10,0x10};
     int bishopdeltas[]={-0x11,-0x0F,0x0F,0x11};
     int kingdeltas[]={-0x01,-0x11,-0x10,-0x0F,0x01,0x11,0x10,0x0F};
@@ -883,12 +1102,12 @@ ChError generateMoveForPosition(ChessBoard* board,const PieceInfo* pieceInfo, Mo
                     
                     if(((nextPosition&0xF0)==0x00&&pieceInfo->color==WHITE)||
                        ((nextPosition&0xF0)==0x70&&pieceInfo->color==BLACK)){
-                        addMove(board,position, nextPosition,queen,PROMOTION, moveList);
-                        addMove(board,position, nextPosition,knight,PROMOTION, moveList);
-                        addMove(board,position, nextPosition,rook,PROMOTION, moveList);
-                        addMove(board,position, nextPosition,bishop,PROMOTION, moveList);
+                        addMove(board,position, nextPosition,queen,PROMOTION, moveList,usePins,pinnedPieces);
+                        addMove(board,position, nextPosition,knight,PROMOTION, moveList,usePins,pinnedPieces);
+                        addMove(board,position, nextPosition,rook,PROMOTION, moveList,usePins,pinnedPieces);
+                        addMove(board,position, nextPosition,bishop,PROMOTION, moveList,usePins,pinnedPieces);
                     }else{
-                        addMove(board,position, nextPosition,0,NORMAL, moveList);
+                        addMove(board,position, nextPosition,0,NORMAL, moveList,usePins,pinnedPieces);
                     }
                     
                     int homeRow=pieceInfo->color==BLACK?(position&0xF0)==0x10:(position&0xF0)==0x60;
@@ -896,7 +1115,7 @@ ChError generateMoveForPosition(ChessBoard* board,const PieceInfo* pieceInfo, Mo
                         nextPosition+=0x10*pawnDirectionModifier;
                         pieceOnNewSquare=getPieceForTile(board,nextPosition);
                         if(!pieceOnNewSquare){
-                            addMove(board,position, nextPosition,0,PAWNDOUBLE, moveList);
+                            addMove(board,position, nextPosition,0,PAWNDOUBLE, moveList,usePins,pinnedPieces);
                         }
                     }
                 }
@@ -908,15 +1127,15 @@ ChError generateMoveForPosition(ChessBoard* board,const PieceInfo* pieceInfo, Mo
                    pieceOnNewSquare->color!=pieceInfo->color){
                     if(((nextPosition&0xF0)==0x00&&pieceInfo->color==WHITE)||
                        ((nextPosition&0xF0)==0x70&&pieceInfo->color==BLACK)){
-                        addMove(board,position, nextPosition,queen,PROMOTION, moveList);
-                        addMove(board,position, nextPosition,knight,PROMOTION, moveList);
-                        addMove(board,position, nextPosition,rook,PROMOTION, moveList);
-                        addMove(board,position, nextPosition,bishop,PROMOTION, moveList);
+                        addMove(board,position, nextPosition,queen,PROMOTION, moveList,usePins,pinnedPieces);
+                        addMove(board,position, nextPosition,knight,PROMOTION, moveList,usePins,pinnedPieces);
+                        addMove(board,position, nextPosition,rook,PROMOTION, moveList,usePins,pinnedPieces);
+                        addMove(board,position, nextPosition,bishop,PROMOTION, moveList,usePins,pinnedPieces);
                     }else{
-                        addMove(board,position, nextPosition,0,NORMAL, moveList);               
+                        addMove(board,position, nextPosition,0,NORMAL, moveList,usePins,pinnedPieces);               
                     }
                 }else if(board->enPassantSquare==nextPosition){
-                    addMove(board,position, nextPosition,0,ENPASSANT, moveList); 
+                    addMove(board,position, nextPosition,0,ENPASSANT, moveList,usePins,pinnedPieces); 
                 }
             }
             nextPosition=position+0x0F*pawnDirectionModifier;
@@ -926,15 +1145,15 @@ ChError generateMoveForPosition(ChessBoard* board,const PieceInfo* pieceInfo, Mo
                    pieceOnNewSquare->color!=pieceInfo->color){
                     if(((nextPosition&0xF0)==0x00&&pieceInfo->color==WHITE)||
                        ((nextPosition&0xF0)==0x70&&pieceInfo->color==BLACK)){
-                        addMove(board,position, nextPosition,queen,PROMOTION, moveList);
-                        addMove(board,position, nextPosition,knight,PROMOTION, moveList);
-                        addMove(board,position, nextPosition,rook,PROMOTION, moveList);
-                        addMove(board,position, nextPosition,bishop,PROMOTION, moveList);
+                        addMove(board,position, nextPosition,queen,PROMOTION, moveList,usePins,pinnedPieces);
+                        addMove(board,position, nextPosition,knight,PROMOTION, moveList,usePins,pinnedPieces);
+                        addMove(board,position, nextPosition,rook,PROMOTION, moveList,usePins,pinnedPieces);
+                        addMove(board,position, nextPosition,bishop,PROMOTION, moveList,usePins,pinnedPieces);
                     }else{
-                        addMove(board,position, nextPosition,0,NORMAL, moveList);
+                        addMove(board,position, nextPosition,0,NORMAL, moveList,usePins,pinnedPieces);
                     }
                 }else if(board->enPassantSquare==nextPosition){
-                    addMove(board,position, nextPosition,0,ENPASSANT, moveList); 
+                    addMove(board,position, nextPosition,0,ENPASSANT, moveList,usePins,pinnedPieces); 
                 }
             }               
             
@@ -948,7 +1167,7 @@ ChError generateMoveForPosition(ChessBoard* board,const PieceInfo* pieceInfo, Mo
                     pieceOnNewSquare=getPieceForTile(board,nextPosition);
                     if(!pieceOnNewSquare||
                        pieceOnNewSquare->color!=pieceInfo->color){
-                        addMove(board,position, nextPosition,0,NORMAL, moveList);
+                        addMove(board,position, nextPosition,0,NORMAL, moveList,usePins,pinnedPieces);
                     }
                 }
             }
@@ -963,27 +1182,47 @@ ChError generateMoveForPosition(ChessBoard* board,const PieceInfo* pieceInfo, Mo
                     if((!pieceOnNewSquare||
                         pieceOnNewSquare->color!=pieceInfo->color)&&
                        !isAttacked(board,nextPosition,enemyColor)){
-                        addMove(board,position, nextPosition,0,NORMAL, moveList);;
+                        addMove(board,position, nextPosition,0,NORMAL, moveList,usePins,pinnedPieces);;
                     }
                     
                 }
             }
-            if((board->castlingRights&0xA)==0xA){
+            if(board->colorToPlay==WHITE){
+            if((board->castlingRights&0x8)==0x8){
                 if(board->tiles[position+0x01]==NULL&&
                    board->tiles[position+0x02]==NULL&&
                    !isAttacked(board, position+0x01, enemyColor)&&
                    !isAttacked(board, position+0x02, enemyColor)){
-                    addMove(board,position, position+0x02,0,pieceInfo->color==WHITE?WKINGCASTLE:BKINGCASTLE, moveList);
+                    addMove(board,position, position+0x02,0,WKINGCASTLE, moveList,usePins,pinnedPieces);
                 }
             }
-            if((board->castlingRights&0x5)==0x5){
+            if((board->castlingRights&0x4)==0x4){
                 if(board->tiles[position-0x01]==NULL&&
                    board->tiles[position-0x02]==NULL&&
                    board->tiles[position-0x03]==NULL&&
                    !isAttacked(board, position-0x01, enemyColor)&&
                    !isAttacked(board, position-0x02, enemyColor)){
-                    addMove(board,position, position-0x02,0,pieceInfo->color==WHITE?WQUEENCASTLE:BQUEENCASTLE, moveList);
+                    addMove(board,position, position-0x02,0,WQUEENCASTLE, moveList,usePins,pinnedPieces);
                 }
+            }
+            }else{
+                if((board->castlingRights&0x2)==0x2){
+                    if(board->tiles[position+0x01]==NULL&&
+                       board->tiles[position+0x02]==NULL&&
+                       !isAttacked(board, position+0x01, enemyColor)&&
+                       !isAttacked(board, position+0x02, enemyColor)){
+                        addMove(board,position, position+0x02,0,BKINGCASTLE, moveList,usePins,pinnedPieces);
+                    }
+                }
+                if((board->castlingRights&0x1)==0x1){
+                    if(board->tiles[position-0x01]==NULL&&
+                       board->tiles[position-0x02]==NULL&&
+                       board->tiles[position-0x03]==NULL&&
+                       !isAttacked(board, position-0x01, enemyColor)&&
+                       !isAttacked(board, position-0x02, enemyColor)){
+                        addMove(board,position, position-0x02,0,BQUEENCASTLE, moveList,usePins,pinnedPieces);
+                    }
+                } 
             }
             
             break;   
@@ -997,10 +1236,10 @@ ChError generateMoveForPosition(ChessBoard* board,const PieceInfo* pieceInfo, Mo
                 while(IS_ON_BOARD(nextPosition)){
                     pieceOnNewSquare=getPieceForTile(board,nextPosition);
                     if(!pieceOnNewSquare){
-                        addMove(board,position, nextPosition,0,NORMAL, moveList);
+                        addMove(board,position, nextPosition,0,NORMAL, moveList,usePins,pinnedPieces);
                     }else{
                         if(pieceOnNewSquare->color!=pieceInfo->color){
-                            addMove(board,position, nextPosition,0,NORMAL, moveList); 
+                            addMove(board,position, nextPosition,0,NORMAL, moveList,usePins,pinnedPieces); 
                         }
                         break;
                     }
@@ -1014,10 +1253,10 @@ ChError generateMoveForPosition(ChessBoard* board,const PieceInfo* pieceInfo, Mo
                 while(IS_ON_BOARD(nextPosition)){
                     pieceOnNewSquare=getPieceForTile(board,nextPosition);
                     if(!pieceOnNewSquare){
-                        addMove(board,position, nextPosition,0,NORMAL, moveList);
+                        addMove(board,position, nextPosition,0,NORMAL, moveList,usePins,pinnedPieces);
                     }else{
                         if(pieceOnNewSquare->color!=pieceInfo->color){
-                            addMove(board,position, nextPosition,0,NORMAL, moveList);
+                            addMove(board,position, nextPosition,0,NORMAL, moveList,usePins,pinnedPieces);
                         }
                         break;
                     }
@@ -1031,10 +1270,10 @@ ChError generateMoveForPosition(ChessBoard* board,const PieceInfo* pieceInfo, Mo
                 while(IS_ON_BOARD(nextPosition)){
                     pieceOnNewSquare=getPieceForTile(board,nextPosition);
                     if(!pieceOnNewSquare){
-                        addMove(board,position, nextPosition,0,NORMAL, moveList);
+                        addMove(board,position, nextPosition,0,NORMAL, moveList,usePins,pinnedPieces);
                     }else{
                         if(pieceOnNewSquare->color!=pieceInfo->color){
-                            addMove(board,position, nextPosition,0,NORMAL, moveList);
+                            addMove(board,position, nextPosition,0,NORMAL, moveList,usePins,pinnedPieces);
                         }
                         break;
                     }
@@ -1047,10 +1286,10 @@ ChError generateMoveForPosition(ChessBoard* board,const PieceInfo* pieceInfo, Mo
                 while(IS_ON_BOARD(nextPosition)){
                     pieceOnNewSquare=getPieceForTile(board,nextPosition);
                     if(!pieceOnNewSquare){
-                        addMove(board,position, nextPosition,0,NORMAL, moveList);
+                        addMove(board,position, nextPosition,0,NORMAL, moveList,usePins,pinnedPieces);
                     }else{
                         if(pieceOnNewSquare->color!=pieceInfo->color){
-                            addMove(board,position, nextPosition,0,NORMAL, moveList); 
+                            addMove(board,position, nextPosition,0,NORMAL, moveList,usePins,pinnedPieces); 
                         }
                         break;
                     }
@@ -1068,13 +1307,23 @@ ChError generateMoveForPosition(ChessBoard* board,const PieceInfo* pieceInfo, Mo
 ChError generateMoves(ChessBoard* board,enum Color color, MoveList* moveList){
     PieceInfo* pieceArray=color==WHITE?board->whiteToSquare:board->blackToSquare;
     
+    Pin pinnedPieces[9];
+    for(int i=0;i<9;i++)
+        pinnedPieces[i].from=NO_LOCATION;
+    
+    int usePins=1;
+    if(isCheck(board, color)){
+        usePins=0;
+    }else{
+        getPinnedPiecePositions(board, color, pinnedPieces);
+    }
     //generateAttackMap(board, color==WHITE?BLACK:WHITE);
     int offset=moveList->nextFree;
     for(int i=0;i<16;i++){
         if(pieceArray[i].location==-5){
             continue;
         }
-        generateMoveForPosition(board,&pieceArray[i], moveList);
+        generateMoveForPosition(board,&pieceArray[i], moveList,usePins,pinnedPieces);
     }
     
     if(moveList->nextFree==offset){

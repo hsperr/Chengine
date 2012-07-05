@@ -34,7 +34,7 @@ int main (int argc, const char * argv[])
         printError(hr);
     }
 
-    //readFENString(&newGame.board, "k7/8/8/3p4/2P1P3/8/8/K7 w - - 0 1");
+    readFENString(&newGame.board, "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R2K3R b kq - 1 1");
          printBoardE(&newGame.board);
     while(newGame.isRunning){
             
@@ -75,8 +75,8 @@ int main (int argc, const char * argv[])
      
     printf("Perfting\n");
     
-   // readFENString(&newGame.board, "rnbqkbnr/1ppppppp/p7/1B6/4P3/8/PPPP1PPP/RNBQK1NR b KQkq - 1 2");
-   printBoardE(&newGame.board);
+    readFENString(&newGame.board, "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 0");
+    printBoardE(&newGame.board);
     perft(&newGame.board,1);
     perft(&newGame.board,2);
     perft(&newGame.board,3);

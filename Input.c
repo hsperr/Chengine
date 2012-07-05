@@ -104,6 +104,9 @@ void checkForInput(Game* game){
                 //e2e4  <-- normal move
                 //e7e8q <--- pawn promotion
                 //e1g1, e1c1, e8g8, e8c8 <-- castling
+            }else if(strncmp(input,"pins",4)==0){
+                
+                
             }else if(strncmp(input,"?",1)==0){
                 // force move if thinking, else ignore
             }else if(strncmp(input,"ping",4)==0){

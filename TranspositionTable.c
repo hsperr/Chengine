@@ -79,7 +79,7 @@ u_int64_t getZobristHash(ChessBoard* board){
             zobrist^=PIECES[board->whiteToSquare[i].piece][WHITE][locationToIndex(board->whiteToSquare[i].location)];
         }
         if(board->blackToSquare[i].location>-1){
-            zobrist^=PIECES[board->blackToSquare[i].piece][WHITE][locationToIndex(board->blackToSquare[i].location)];
+            zobrist^=PIECES[board->blackToSquare[i].piece][BLACK][locationToIndex(board->blackToSquare[i].location)];
         }
         
     }

@@ -13,6 +13,13 @@
 #include "BoardConstants.h"
 
 
+typedef struct Pin{
+    char from;
+    char to;
+    char delta;
+    char enpassantpin;
+}Pin;
+
 ChError initBoard(ChessBoard* board);
 ChError resetBoard(ChessBoard* board);
 ChError readFENString(ChessBoard* board, char* fen);
@@ -20,7 +27,7 @@ void printBoardE(ChessBoard* board);
 
 ChError generateMoves(ChessBoard* board,enum Color color, MoveList* moveList);
 ChError generateSortedMoves(ChessBoard* board,enum Color color, MoveList* moveList);
-ChError generateMoveForPosition(ChessBoard* board,const PieceInfo* pieceInfo, MoveList* moveList);
+ChError generateMoveForPosition(ChessBoard* board,const PieceInfo* pieceInfo, MoveList* moveList, int usePins, Pin* pinnedPieces);
 
 ChError doMove(ChessBoard* board, Move* move, History* history);
 ChError undoMove(ChessBoard* board, Move* move, History* history);
