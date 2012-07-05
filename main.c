@@ -18,12 +18,12 @@ int main (int argc, const char * argv[])
     
     Game newGame;
     ChError hr;
-    initTable(1048576, 0xFFFFF);
+    initTable(65536 , 0xFFFF);
     
     newGame.isRunning=0;
     newGame.aiPlayer[WHITE].depth=10;
     newGame.aiPlayer[WHITE].timelimit=500;
-    newGame.aiPlayer[WHITE].isAi=1;
+    newGame.aiPlayer[WHITE].isAi=0;
     
     newGame.aiPlayer[BLACK].depth=7;
     newGame.aiPlayer[BLACK].timelimit=500;
@@ -97,7 +97,7 @@ int main (int argc, const char * argv[])
     perft_hash(&newGame.board,5);
 
     perft_hash(&newGame.board,6);
-    perft_hash(&newGame.board,7);
+   // perft_hash(&newGame.board,7);
    // perft_hash(&newGame.board,8);
     
     

@@ -73,6 +73,8 @@ static inline int SAME_COLUMN(int position1, int position2){return COLUMN(positi
 
 static inline int IS_PROMOTE_ROW(int position,enum Color color) {return (color==WHITE&&ROW(position)==0)||(color==BLACK&&ROW(position)==8);};
 
+static char attackMap[127];
+
 
 
 ChError initBoard(ChessBoard* board){
@@ -125,6 +127,7 @@ ChError readFENString(ChessBoard* board, char* fen){
     //board piece index
     for(int i=0;i<127;i++){
         board->tiles[i]=NULL;
+        attackMap[i]=0;
     }
     //in board representation of fen string there is no " " 
     for(;fen[stringIndex]!=' ';stringIndex++){
@@ -438,6 +441,110 @@ void printBoardE(ChessBoard* board){
         printf("%c ",'a'+j);
     }
     printf("\n");
+}
+
+void generateAttackMap(ChessBoard* board, enum Color attackerColor){
+    for(int i=0;i<127;i++){
+        attackMap[i]=0;
+    }
+    int rookdeltas[]={-0x01,0x01,-0x10,0x10};
+    int bishopdeltas[]={-0x11,-0x0F,0x0F,0x11};
+    int kingdeltas[]={-0x01,-0x11,-0x10,-0x0F,0x01,0x11,0x10,0x0F};
+    int knightdeltas[]={-0x1F,-0x21,-0x12,-0x0E,0x1F,0x21,0x12,0x0E};
+    int direction=attackerColor==WHITE?-1:1;
+    PieceInfo* attackerPieces=attackerColor==WHITE?board->whiteToSquare:board->blackToSquare;
+        
+    for(int j=0;j<16;j++){
+        PieceInfo nextPiece=attackerPieces[j];        
+        switch(nextPiece.piece){
+            case pawn:
+                if(IS_ON_BOARD(nextPiece.location+direction*0x0F))
+                    attackMap[nextPiece.location+direction*0x0F]+=1;
+                if(IS_ON_BOARD(nextPiece.location+direction*0x11))
+                    attackMap[nextPiece.location+direction*0x11]+=1;
+                break;
+            case knight:
+                for(int i=0;i<8;i++){
+                    if(IS_ON_BOARD(nextPiece.location+knightdeltas[i]))
+                       attackMap[nextPiece.location+knightdeltas[i]]+=1;
+                }
+                break;
+            case king:
+                for(int i=0;i<8;i++){
+                   if(IS_ON_BOARD(nextPiece.location+kingdeltas[i]))
+                      attackMap[nextPiece.location+kingdeltas[i]]+=1;
+                }
+                break;
+            case queen:
+                for(int i=0;i<4;i++){
+                    int delta=rookdeltas[i];
+                    int nextPosition=nextPiece.location+delta;
+                    while(IS_ON_BOARD(nextPosition)){
+                        attackMap[nextPosition]+=1;
+                        if(board->tiles[nextPosition])
+                            break;
+                        
+                        nextPosition+=delta;
+                    }
+
+                }
+                for(int i=0;i<4;i++){
+                    int delta=bishopdeltas[i];
+                    int nextPosition=nextPiece.location+delta;
+                    while(IS_ON_BOARD(nextPosition)){
+                        attackMap[nextPosition]+=1;
+                        if(board->tiles[nextPosition])
+                            break;
+                        
+                        nextPosition+=delta;
+                    }
+                    
+                }
+                break;
+            case rook:
+                for(int i=0;i<4;i++){
+                    int delta=rookdeltas[i];
+                    int nextPosition=nextPiece.location+delta;
+                    while(IS_ON_BOARD(nextPosition)){
+                        attackMap[nextPosition]+=1;
+                        if(board->tiles[nextPosition])
+                            break;
+                        
+                        nextPosition+=delta;
+                    }
+                    
+                }
+                break;
+            case bishop:
+                for(int i=0;i<4;i++){
+                    int delta=bishopdeltas[i];
+                    int nextPosition=nextPiece.location+delta;
+                    while(IS_ON_BOARD(nextPosition)){
+                        attackMap[nextPosition]+=1;
+                        if(board->tiles[nextPosition])
+                            break;
+                        
+                        nextPosition+=delta;
+                    }
+                    
+                }
+                break;
+            default:
+                printf("Error no default case in create attack map");
+                break;
+        }
+    }
+    
+    
+ /*   for(int i =0;i<127;i++){
+        if((i&0x0F)==0x08)
+            printf("\n");
+        if((i&0x0F)>=0x08)
+            continue;
+        printf("%d ",attackMap[i]);
+
+    }
+    printf("\n");*/
 }
 
 int isAttacked(ChessBoard* board, int position, enum Color attackerColor){
@@ -961,6 +1068,7 @@ ChError generateMoveForPosition(ChessBoard* board,const PieceInfo* pieceInfo, Mo
 ChError generateMoves(ChessBoard* board,enum Color color, MoveList* moveList){
     PieceInfo* pieceArray=color==WHITE?board->whiteToSquare:board->blackToSquare;
     
+    //generateAttackMap(board, color==WHITE?BLACK:WHITE);
     int offset=moveList->nextFree;
     for(int i=0;i<16;i++){
         if(pieceArray[i].location==-5){
