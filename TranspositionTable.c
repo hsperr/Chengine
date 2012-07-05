@@ -61,7 +61,7 @@ ChError initTable(long size, long inMask){
     for(long i=0;i<size;i++){
         hashTable[i].zobrist=0;
     }
-    indexMask=size;
+    indexMask=inMask;
     
     return ChError_OK;
 
@@ -70,7 +70,7 @@ int locationToIndex(int location){
     return location-(((location&0xF0)>>4)*8);
 }
 u_int64_t getZobristHash(ChessBoard* board){
-    long zobrist=0;
+    u_int64_t zobrist=0;
     if(board->colorToPlay==BLACK){
         zobrist^=BLACKTOPLAY;
     }
@@ -100,11 +100,9 @@ ChError probe(u_int64_t zobrist, int depth,int* score){
     if(depth==0)
         return ChError_NotInTable;
     
-    long index=zobrist%indexMask;
+    long index=zobrist&indexMask;
     
     TableEntry* entry=&hashTable[index];
-    if(!entry)
-        return ChError_NotInTable;
     
     if(entry->zobrist==zobrist){
         //we found that position before
@@ -150,7 +148,7 @@ ChError addKeyToTable(u_int64_t zobrist, int depth, int score){
     if(depth==0)
         return ChError_OK;
     
-    u_int64_t index=zobrist%indexMask;
+    u_int64_t index=zobrist&indexMask;
 
     TableEntry* entry=&hashTable[index];
     

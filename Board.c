@@ -87,6 +87,7 @@ ChError initBoard(ChessBoard* board){
     
     readFENString(board,"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
     
+    
     return ChError_OK;
     
 }
@@ -102,6 +103,7 @@ ChError resetBoard(ChessBoard* board){
     board->playedMoves.array=NULL;
     
     readFENString(board,"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+    
     
     return ChError_OK;
     
@@ -315,6 +317,9 @@ ChError readFENString(ChessBoard* board, char* fen){
         return ChError_BrokenFenString;
     }
     //handle numMoves
+    
+    
+    board->zobrist=getZobristHash(board);
     
     return ChError_OK;
 }
@@ -551,10 +556,12 @@ ChError doMove(ChessBoard* board, Move* move, History* history){
     board->enPassantSquare=NO_LOCATION;
     
     
-    updateCastleRightZobrist(&board->zobrist, board->castlingRights);
     board->castlingRights&=castlingRights[move->from];
     board->castlingRights&=castlingRights[move->to];
-    updateCastleRightZobrist(&board->zobrist, board->castlingRights);
+    if(board->castlingRights!=history->castlingRights){
+        updateCastleRightZobrist(&board->zobrist, board->castlingRights);
+        updateCastleRightZobrist(&board->zobrist, board->castlingRights);
+    }
     
     
     switch (move->moveType) {
