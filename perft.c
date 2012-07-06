@@ -166,7 +166,7 @@ void divide(ChessBoard* board, int depth){
         undoMove(board,move,&h);
         
         moveToChar(&moveList.array[i],moveAsChar);
-        printf("For move %s I found %ld moves after %f sec .\n",moveAsChar,iterationMoves,(float)((clock()-time)/CLOCKS_PER_SEC));
+        printf("%s %ld %s in %f sec .\n",moveAsChar,iterationMoves,move->moveType==NORMAL?"N":"S",(float)((clock()-time)/CLOCKS_PER_SEC));
         
     }
     freeMoveList(&moveList);

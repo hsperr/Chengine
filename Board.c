@@ -488,7 +488,7 @@ ChError getPinnedPiecePositions(ChessBoard* board, enum Color color, Pin* pieceL
                         
                         nextPosition-=delta;
                     }
-                    if(foundPinnedPosition){
+                    if(foundPinnedPosition>=0){
                         pieceList[pinnedPieces].from=foundPinnedPosition;
                         pieceList[pinnedPieces].to=nextPiece.location;
                         pieceList[pinnedPieces].delta=delta;                        
@@ -528,7 +528,7 @@ ChError getPinnedPiecePositions(ChessBoard* board, enum Color color, Pin* pieceL
                         
                         nextPosition-=delta;
                     }
-                    if(foundPinnedPosition){
+                    if(foundPinnedPosition>=0){
                         pieceList[pinnedPieces].from=foundPinnedPosition;
                         pieceList[pinnedPieces].to=nextPiece.location;
                         pieceList[pinnedPieces].delta=delta;
@@ -569,7 +569,7 @@ ChError getPinnedPiecePositions(ChessBoard* board, enum Color color, Pin* pieceL
                         
                         nextPosition-=delta;
                     }
-                    if(foundPinnedPosition){
+                    if(foundPinnedPosition>=0){
                         pieceList[pinnedPieces].from=foundPinnedPosition;
                         pieceList[pinnedPieces].to=nextPiece.location;
                         pieceList[pinnedPieces].delta=delta;
@@ -777,6 +777,11 @@ int isAttacked(ChessBoard* board, int position, enum Color attackerColor){
 ChError doMove(ChessBoard* board, Move* move, History* history){
     if(board==NULL||move==NULL)
         return ChError_Arguments;
+   
+#ifdef DEBUG
+    u_int64_t zobrist=getZobristHash(board);
+    assert(board->zobrist==zobrist);
+#endif
     assert(board->tiles[move->from]!=NULL);
     Color myColor=board->colorToPlay;
     PieceInfo* fromPiece=board->tiles[move->from];
@@ -790,6 +795,7 @@ ChError doMove(ChessBoard* board, Move* move, History* history){
     //capture piece
     if(board->tiles[move->to]!=0x0){
         history->capturedPiece=board->tiles[move->to];
+        assert(history->capturedPiece->piece!=king);
         removePieceZobrist(&board->zobrist,move->to, history->capturedPiece->piece,myColor==WHITE?BLACK:WHITE);
         board->tiles[move->to]=NULL;
         history->capturedPiece->location=NO_LOCATION;
@@ -893,13 +899,20 @@ ChError doMove(ChessBoard* board, Move* move, History* history){
     else
         board->repetitionMoves=0;
        
+#ifdef DEBUG
+    u_int64_t zobrist2=getZobristHash(board);
+    assert(board->zobrist==zobrist2);
+#endif
     return ChError_OK;
 }
 
 ChError undoMove(ChessBoard* board,Move* move, History* history){
     if(board==NULL||move==NULL)
         return ChError_Arguments;
-        
+#ifdef DEBUG
+    u_int64_t zobrist=getZobristHash(board);
+    assert(board->zobrist==zobrist);
+#endif
     assert(board->tiles[move->to]!=NULL);
     board->colorToPlay=board->colorToPlay==WHITE?BLACK:WHITE;
     board->zobrist=history->zobrist;
@@ -972,6 +985,10 @@ ChError undoMove(ChessBoard* board,Move* move, History* history){
     
     board->playedMoves.nextFree--;
     
+#ifdef DEBUG
+    u_int64_t zobrist2=getZobristHash(board);
+    assert(board->zobrist==zobrist2);
+#endif
     return ChError_OK;
 }
 int isCheck(ChessBoard* board, Color color){
@@ -981,27 +998,30 @@ int isCheck(ChessBoard* board, Color color){
 }
 static ChError addMove(ChessBoard* board,int from, int to, PIECE promotion, enum MoveType type, MoveList* list, int usePins, Pin* pinnedPieces){
     ChError hr=ChError_OK;
-    
+#ifdef DEBUG
+    u_int64_t zobrist=getZobristHash(board);
+    assert(board->zobrist==zobrist);
+#endif
     //if piece is pinned it can only move if it hits the pinning piece
-    if(usePins&&!type==ENPASSANT){
+    if(usePins&&type!=ENPASSANT){
         for(int i=0;i<9;i++){
             if(pinnedPieces[i].from!=NO_LOCATION){
                 if(from==pinnedPieces[i].from){
                     if(to!=pinnedPieces[i].to){
                                                
-                        int delta=(from-to);
-                        if((pinnedPieces[i].delta==1||pinnedPieces[i].delta==-1)&&(delta!=pinnedPieces[i].delta))
+                        int index=(from-to)+128;
+                        int delta=DELTA_ARRAY[index];
+                        if(delta!=pinnedPieces[i].delta&&delta!=-pinnedPieces[i].delta)
                            return hr;
-                        if((delta%pinnedPieces[i].delta!=0))
-                            return hr;
+
                     }
                 }
             }else{
                 break;
             }
         }
-        
-        Move move={-5};
+
+        Move move={NO_LOCATION};
         move.from=from;
         move.to=to;
         move.moveType=type;
@@ -1012,34 +1032,47 @@ static ChError addMove(ChessBoard* board,int from, int to, PIECE promotion, enum
         
         
         PieceInfo* temp = board->tiles[to];
-        if(board->tiles[to])
-            board->tiles[to]->location=-1;
+        if(temp)
+            temp->location=NO_LOCATION;
+        if(type==ENPASSANT){
+            temp=board->tiles[from+COLUMN(to)-COLUMN(from)];
+            board->tiles[from+COLUMN(to)-COLUMN(from)]=NULL;
+            temp->location=NO_LOCATION;
+        }
      
         assert(board->tiles[from]);
         board->tiles[to]=board->tiles[from];
         board->tiles[from]->location=to;
         board->tiles[from]=NULL;
-        
+        int add=1;
         if(isCheck(board, board->colorToPlay)){
-            board->tiles[from]=board->tiles[to];
-            board->tiles[to]=temp;
-            if(temp)
-                board->tiles[to]->location=to;
-            board->tiles[from]->location=from;
+            add=0;     
+        }
+        
+        board->tiles[from]=board->tiles[to];
+        board->tiles[to]=NULL;
+        if(type==ENPASSANT){
+            board->tiles[from+COLUMN(to)-COLUMN(from)]=temp;
+            temp->location=from+COLUMN(to)-COLUMN(from);
         }else{
-            board->tiles[from]=board->tiles[to];
             board->tiles[to]=temp;
             if(temp)
-                board->tiles[to]->location=to;
-            board->tiles[from]->location=from;
-            
-            Move move={-5};
+                board->tiles[to]->location=to;  
+        }
+        board->tiles[from]->location=from;
+#ifdef DEBUG
+        u_int64_t zobrist=getZobristHash(board);
+        assert(board->zobrist==zobrist);
+#endif    
+        if(add){
+            Move move={NO_LOCATION};
             move.from=from;
             move.to=to;
             move.moveType=type;
             move.promote=promotion;
             hr=addToMoveList(list, &move);
         }
+
     }
     
     return hr;
@@ -1155,6 +1188,7 @@ ChError generateMoveForPosition(ChessBoard* board,const PieceInfo* pieceInfo, Mo
             if((board->castlingRights&0x8)==0x8){
                 if(board->tiles[position+0x01]==NULL&&
                    board->tiles[position+0x02]==NULL&&
+                   !isAttacked(board, position, enemyColor)&&
                    !isAttacked(board, position+0x01, enemyColor)&&
                    !isAttacked(board, position+0x02, enemyColor)){
                     addMove(board,position, position+0x02,0,WKINGCASTLE, moveList,usePins,pinnedPieces);
@@ -1164,6 +1198,7 @@ ChError generateMoveForPosition(ChessBoard* board,const PieceInfo* pieceInfo, Mo
                 if(board->tiles[position-0x01]==NULL&&
                    board->tiles[position-0x02]==NULL&&
                    board->tiles[position-0x03]==NULL&&
+                   !isAttacked(board, position, enemyColor)&&
                    !isAttacked(board, position-0x01, enemyColor)&&
                    !isAttacked(board, position-0x02, enemyColor)){
                     addMove(board,position, position-0x02,0,WQUEENCASTLE, moveList,usePins,pinnedPieces);
@@ -1173,6 +1208,7 @@ ChError generateMoveForPosition(ChessBoard* board,const PieceInfo* pieceInfo, Mo
                 if((board->castlingRights&0x2)==0x2){
                     if(board->tiles[position+0x01]==NULL&&
                        board->tiles[position+0x02]==NULL&&
+                       !isAttacked(board, position, enemyColor)&&
                        !isAttacked(board, position+0x01, enemyColor)&&
                        !isAttacked(board, position+0x02, enemyColor)){
                         addMove(board,position, position+0x02,0,BKINGCASTLE, moveList,usePins,pinnedPieces);
@@ -1182,6 +1218,7 @@ ChError generateMoveForPosition(ChessBoard* board,const PieceInfo* pieceInfo, Mo
                     if(board->tiles[position-0x01]==NULL&&
                        board->tiles[position-0x02]==NULL&&
                        board->tiles[position-0x03]==NULL&&
+                       !isAttacked(board, position, enemyColor)&&
                        !isAttacked(board, position-0x01, enemyColor)&&
                        !isAttacked(board, position-0x02, enemyColor)){
                         addMove(board,position, position-0x02,0,BQUEENCASTLE, moveList,usePins,pinnedPieces);
