@@ -66,6 +66,8 @@ typedef struct History{
     int oldRepetitionMoves;
     int castlingRights;
     u_int64_t zobrist;
+    int whitePieceScore;
+    int blackPieceScore;
 }History;
 
 typedef struct Move{
@@ -113,7 +115,9 @@ typedef struct ChessBoard{
     //                 RNBWKBNRPPPPPPPP
     //gets updated in doMove() -1 denotes piece is off the board
     PieceInfo blackToSquare[16];
+    int whitePieceScore;
     PieceInfo whiteToSquare[16];
+    int blackPieceScore;
     
     Color colorToPlay;
     MoveList playedMoves;

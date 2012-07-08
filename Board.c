@@ -116,6 +116,8 @@ ChError readFENString(ChessBoard* board, char* fen){
     int stringIndex=0;
     ChError hr;
     
+    board->blackPieceScore=0;
+    board->whitePieceScore=0;
     //reset piece index
     for(int i=0;i<16;i++){
         board->whiteToSquare[i].piece=-5;
@@ -329,6 +331,9 @@ ChError readFENString(ChessBoard* board, char* fen){
 static int getPieceScore(PIECE piece){
     int score=0;
     switch (piece) {
+        case king:
+            score=100000;
+            break;
         case queen:
             score=900;
             break;
@@ -354,8 +359,10 @@ ChError insertPiece(ChessBoard* board, PIECE pieceType, Color color, int locatio
     PieceInfo* pieceToSquareArray;
     if(color==WHITE){
         pieceToSquareArray=board->whiteToSquare;
+        board->whitePieceScore+=getPieceScore(pieceType);
     }else{
         pieceToSquareArray=board->blackToSquare;
+        board->blackPieceScore+=getPieceScore(pieceType);
     }
     
     if(pieceType==king){
@@ -790,13 +797,21 @@ ChError doMove(ChessBoard* board, Move* move, History* history){
     history->previousEnPassantSquare=board->enPassantSquare;
     history->oldRepetitionMoves=board->repetitionMoves;
     history->zobrist=board->zobrist;
+    history->whitePieceScore=board->whitePieceScore;
+    history->blackPieceScore=board->blackPieceScore;
 
     
     //capture piece
     if(board->tiles[move->to]!=0x0){
         history->capturedPiece=board->tiles[move->to];
         assert(history->capturedPiece->piece!=king);
-        removePieceZobrist(&board->zobrist,move->to, history->capturedPiece->piece,myColor==WHITE?BLACK:WHITE);
+        if(myColor==WHITE){
+            board->whitePieceScore-=getPieceScore(history->capturedPiece->piece);
+            removePieceZobrist(&board->zobrist,move->to, history->capturedPiece->piece,BLACK);
+        }else{
+            board->blackPieceScore-=getPieceScore(history->capturedPiece->piece);
+            removePieceZobrist(&board->zobrist,move->to, history->capturedPiece->piece,WHITE);
+        }
         board->tiles[move->to]=NULL;
         history->capturedPiece->location=NO_LOCATION;
       
@@ -919,6 +934,8 @@ ChError undoMove(ChessBoard* board,Move* move, History* history){
     board->castlingRights=history->castlingRights;
     board->enPassantSquare=history->previousEnPassantSquare;
     board->repetitionMoves=history->oldRepetitionMoves;
+    board->whitePieceScore=history->whitePieceScore;
+    board->blackPieceScore=history->blackPieceScore;
     
     //unmovePiece
     board->tiles[move->from]=board->tiles[move->to];
@@ -1337,6 +1354,72 @@ ChError generateMoves(ChessBoard* board,enum Color color, MoveList* moveList){
     
     return ChError_OK;
 }
+int compareMoves(void* b, const void* mv1, const void* mv2){
+    
+    Move* move1=(Move*)mv1;
+    Move* move2=(Move*)mv2;
+    ChessBoard* board =(ChessBoard*)b;
+    
+    int move1Score=0;
+    int move2Score=0;
+    
+    if(board->tiles[move1->to]!=NULL){
+        move1Score=getPieceScore(board->tiles[move1->to]->piece)-getPieceScore(board->tiles[move1->from]->piece)+500;
+    }else{
+        move1Score=-1000+getPieceScore(board->tiles[move1->from]->piece);
+    }
+    if(board->tiles[move2->to]!=NULL){
+        move2Score=getPieceScore(board->tiles[move2->to]->piece)-getPieceScore(board->tiles[move2->from]->piece)+500;
+    }else{
+        move2Score=-1000+getPieceScore(board->tiles[move2->from]->piece);
+    }
+    
+    if(move2Score>move1Score){
+        return 1;
+    }else if(move2Score<move1Score){
+        return -1;
+    }
+    return 0;
+}
+
+ChError generateSortedMoves(ChessBoard* board,enum Color color, MoveList* moveList){
+    ChError hr;
+    int nextFree=moveList->nextFree;
+    hr=generateMoves(board, color, moveList);
+    if(hr)
+        return hr;
+    
+
+    Move* move=&moveList->array[nextFree];
+    qsort_r(move, moveList->nextFree-nextFree, 0x10, board, &compareMoves);
+    
+
+    return hr;
+}
+
+ChError generateCaptures(ChessBoard* board,enum Color color, MoveList* moveList){
+    ChError hr;
+    int nextFree=moveList->nextFree;
+    hr=generateMoves(board, color, moveList);
+    if(hr)
+        return hr;
+    
+    
+    Move* move=&moveList->array[nextFree];
+    qsort_r(move, moveList->nextFree-nextFree, 0x10, board, &compareMoves);
+    
+    int capturesMoves=0;
+    for(int i=nextFree;i<moveList->nextFree;i++){
+        if(board->tiles[moveList->array[i].to])
+            capturesMoves++;
+        else
+            break;
+    }
+    
+    moveList->nextFree=nextFree+capturesMoves;
+    
+    return hr;
+}
 int equalMoves(Move* move1, Move* move2){
     return move1->from==move2->from&&move1->to==move2->to&&move1->promote==move2->promote;
 }
@@ -1349,6 +1432,7 @@ ChError isLegal(ChessBoard* board, Move* move){
     
     for(int i=0;i<moveList.nextFree;i++){
         if(equalMoves(&moveList.array[i],move)){
+            move->moveType=moveList.array[i].moveType;
             freeMoveList(&moveList);
             return 1;
         }

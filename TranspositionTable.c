@@ -106,7 +106,7 @@ ChError probe(u_int64_t zobrist, int depth,int* score){
     
     if(entry->zobrist==zobrist){
         //we found that position before
-        if(entry->depth==depth){
+        if(entry->depth>=depth){
             *score=entry->score;
             return ChError_OK;
         }else{

@@ -26,6 +26,7 @@ void printBoardE(ChessBoard* board);
 
 ChError generateMoves(ChessBoard* board,enum Color color, MoveList* moveList);
 ChError generateSortedMoves(ChessBoard* board,enum Color color, MoveList* moveList);
+ChError generateCaptures(ChessBoard* board,enum Color color, MoveList* moveList);
 ChError generateMoveForPosition(ChessBoard* board,const PieceInfo* pieceInfo, MoveList* moveList, int usePins, Pin* pinnedPieces);
 
 ChError doMove(ChessBoard* board, Move* move, History* history);
