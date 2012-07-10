@@ -12,6 +12,7 @@
 
 
 static const int NO_LOCATION=-5;
+static const unsigned char NO_PIECE=15;
 
 
 //from http://mediocrechess.sourceforge.net/guides/attackedsquares.html
@@ -350,7 +351,7 @@ ChError insertPiece(ChessBoard* board, PIECE pieceType, Color color, int locatio
         board->tiles[location]=&pieceToSquareArray[0];
     }else{
         for(int i=1;i<16;i++){
-            if(pieceToSquareArray[i].piece==-5){
+            if(pieceToSquareArray[i].piece==NO_PIECE){
                 pieceToSquareArray[i].piece=pieceType;
                 pieceToSquareArray[i].location=location;
                 pieceToSquareArray[i].color=color;

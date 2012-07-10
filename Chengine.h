@@ -24,7 +24,7 @@
 #endif
 
 
-typedef char PIECE;
+typedef unsigned char PIECE;
 typedef enum Color {WHITE=0,BLACK=1}Color;
 
 
@@ -71,10 +71,10 @@ typedef struct History{
 }History;
 
 typedef struct Move{
-    char from;
-    char to;
-    char promote;
-    char moveType;
+    unsigned char from;
+    unsigned char to;
+    unsigned char promote;
+    unsigned char moveType;
 }Move;
 
 typedef struct MoveList{

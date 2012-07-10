@@ -13,7 +13,6 @@
 #include "Board.h"
 
 long perft(ChessBoard* board, int depth);
-long perft_hash(ChessBoard* board, int depth);
 void divide(ChessBoard* board, int depth);
 
 
