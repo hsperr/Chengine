@@ -32,7 +32,14 @@ typedef struct AiStatistics{
     int bestMoveScore;
 }AiStatistics;
 
-const int ASPIRATION_SIZE=50;
+
+const char useAlphaBeta=1;
+const char useQuiescent=1;
+const char useHashTables=1;
+const char usePVS=0;
+const char useNullMoves=0;
+const char useAspiration=1;
+const int ASPIRATION_SIZE=10;
 
 int evaluate(ChessBoard* board){
     int score=0;
@@ -91,24 +98,10 @@ int quis(ChessBoard* board,int alpha, int beta, AiStatistics* stats){
     }
 
 
-    /*int whiteAttackMap[127];
-    generateAttackMap(board, WHITE, whiteAttackMap);
-    int blackAttackMap[127];
-    generateAttackMap(board, BLACK, blackAttackMap);*/
-  //  printBoardE(board);
     for(int i=offset;i<list->nextFree;i++){
         stats->quietNodes++;
         History h={0};
         Move* move =&list->array[i];
-       /* int fightingValue=whiteAttackMap[move->to]-blackAttackMap[move->to];
-        if(fightingValue<0){
-            if(board->colorToPlay==WHITE)
-                continue;
-        }
-        if(fightingValue>0){
-            if(board->colorToPlay==BLACK)
-                continue;
-        }*/
         
         doMove(board,move,&h);
         score=-quis(board,-beta,-alpha,stats);
@@ -134,14 +127,17 @@ static ChError alphaBetaRecurse(ChessBoard* board, int depth, int alpha, int bet
     ChError hr=ChError_OK;
     Move bestMove={0};
     int bounds = 2; // upper
-    
+    char usedHashMove=0;
     
     if(depth<=0){
         stats->allMovesCalculated++;
         stats->movesPerIterationCalculated++;
-        //*score-=evaluate(board);
-        *score-=quis(board,alpha,beta,stats);
-//TODO move code into evaluate function
+        if(useQuiescent)
+            *score-=quis(board,alpha,beta,stats);
+        else
+            *score-=evaluate(board);
+        
+        //TODO move code into evaluate function
         hr=generateMoves(board, board->colorToPlay, stats->list);
         switch(hr){
             case ChError_OK:
@@ -151,7 +147,7 @@ static ChError alphaBetaRecurse(ChessBoard* board, int depth, int alpha, int bet
                 *score=localAlpha;
                 break;
             case ChError_CheckMate:
-                localAlpha=MATE_SCORE;
+                localAlpha=-MATE_SCORE;
                 *score-=localAlpha;
                 break;
             default:
@@ -160,41 +156,44 @@ static ChError alphaBetaRecurse(ChessBoard* board, int depth, int alpha, int bet
         stats->list->nextFree=offset;
         return hr;
     }
-  
-    
-    if((hr=probe(board->zobrist, depth,&alpha,&beta, &localAlpha,&hashMove))){
-        //not in table
-    }else{
-        stats->tableLookUpsFound++;
-       *score-=localAlpha;
-       return hr;
-    }
-   
-    if (memcmp(&hashMove, "\0\0\0\0", 4))
-    {    
-        
-        History h={0};
-        hr=doMove(board,&hashMove,&h);
-        if(hr){return hr; }
-        
-        int tempScore=0;
-        hr=alphaBetaRecurse(board, depth-1, -beta,-alpha, &tempScore,1,stats);
-        if(hr!=ChError_OK&&hr!=ChError_StaleMate&&hr!=ChError_CheckMate&&hr!=ChError_RepetitionDraw){
+    /****
+     * HASH PROBING
+     */
+    if(useHashTables){
+        if((hr=probe(board->zobrist, depth,&alpha,&beta, &localAlpha,&hashMove))){
+            //not in table
+        }else{
+            stats->tableLookUpsFound++;
+            *score-=localAlpha;
             return hr;
         }
         
-        hr=undoMove(board, &hashMove,&h);
-        if(hr){return hr; }
-        
-        if(tempScore>localAlpha){
-            if(tempScore>alpha){
-                alpha=tempScore;                  
-            }
-            localAlpha=tempScore;
-            if(alpha>=beta){
-                stats->cutOffs++;
-                *score-=localAlpha;
+        if (memcmp(&hashMove, "\0\0\0\0", 4))
+        {    
+            History h={0};
+            hr=doMove(board,&hashMove,&h);
+            if(hr){return hr; }
+            
+            int tempScore=0;
+            hr=alphaBetaRecurse(board, depth-1, -beta,-alpha, &tempScore,useNullMoves,stats);
+            if(hr!=ChError_OK&&hr!=ChError_StaleMate&&hr!=ChError_CheckMate&&hr!=ChError_RepetitionDraw){
                 return hr;
+            }
+            
+            hr=undoMove(board, &hashMove,&h);
+            if(hr){return hr; }
+            
+            if(tempScore>localAlpha){
+                if(tempScore>alpha){
+                    alpha=tempScore;                  
+                }
+                usedHashMove=1;
+                localAlpha=tempScore;
+                if(alpha>=beta){
+                    stats->cutOffs++;
+                    *score-=localAlpha;
+                    return hr;
+                }
             }
         }
     }
@@ -210,7 +209,7 @@ static ChError alphaBetaRecurse(ChessBoard* board, int depth, int alpha, int bet
             board->enPassantSquare=-5;
             int eval =0;
             hr=alphaBetaRecurse(board, depth-1-2, -beta,
-                              -beta+1, &eval, 0,stats);
+                                -beta+1, &eval, 0,stats);
             if(hr!=ChError_OK&&hr!=ChError_StaleMate&&hr!=ChError_CheckMate&&hr!=ChError_RepetitionDraw)
                 return hr;
             
@@ -220,7 +219,7 @@ static ChError alphaBetaRecurse(ChessBoard* board, int depth, int alpha, int bet
             board->enPassantSquare=temp;
             if(eval >= beta){
                 bounds = 1; //lower
-                addKeyToTable(board->zobrist, depth, localAlpha, bounds,bestMove);
+                addKeyToTable(board->zobrist, depth, eval, bounds,bestMove);
                 *score-=eval;
                 return hr;
             }
@@ -240,13 +239,13 @@ static ChError alphaBetaRecurse(ChessBoard* board, int depth, int alpha, int bet
         case ChError_CheckMate:
             assert(stats->list->nextFree==offset);
             stats->list->nextFree=offset;
-            localAlpha=MATE_SCORE;
+            localAlpha=-MATE_SCORE;
             break;
         default:
             return hr;
             break;
     }
-
+    
     if(board->repetitionMoves>=50){
         stats->list->nextFree=offset;
         localAlpha=0;
@@ -254,7 +253,12 @@ static ChError alphaBetaRecurse(ChessBoard* board, int depth, int alpha, int bet
         return hr;
     }
     
-    
+    int b;
+    if(usedHashMove){
+        b=localAlpha+1;
+    }else{
+        b=beta;
+    }
     for(int moveNumber=offset;moveNumber<stats->list->nextFree;moveNumber++){
         History h={0};
         Move* move=&stats->list->array[moveNumber];
@@ -262,11 +266,23 @@ static ChError alphaBetaRecurse(ChessBoard* board, int depth, int alpha, int bet
         if(hr){return hr; }
         
         int tempScore=0;
-        hr=alphaBetaRecurse(board, depth-1, -beta,-alpha, &tempScore,1,stats);
-        if(hr!=ChError_OK&&hr!=ChError_StaleMate&&hr!=ChError_CheckMate&&hr!=ChError_RepetitionDraw){
-            return hr;
+        if(usePVS){
+            hr=alphaBetaRecurse(board, depth-1, -b,-alpha,&tempScore,useNullMoves,stats);
+            if(hr!=ChError_OK&&hr!=ChError_StaleMate&&hr!=ChError_CheckMate&&hr!=ChError_RepetitionDraw){
+                freeMoveList(stats->list);
+                return hr;
+            }
         }
-
+        //PVS failed
+        if((tempScore>alpha &&tempScore<beta && (moveNumber>0||usedHashMove))||!usePVS){
+            tempScore=0; //research
+            hr=alphaBetaRecurse(board, depth-1, -beta,-alpha,&tempScore,useNullMoves,stats);
+            if(hr!=ChError_OK&&hr!=ChError_StaleMate&&hr!=ChError_CheckMate&&hr!=ChError_RepetitionDraw){
+                freeMoveList(stats->list);
+                return hr;
+            }
+        }
+        
         hr=undoMove(board, move,&h);
         if(hr){return hr; }
         
@@ -280,12 +296,14 @@ static ChError alphaBetaRecurse(ChessBoard* board, int depth, int alpha, int bet
             if(alpha>=beta){
                 bounds = 1; //lower
                 stats->cutOffs++;
-                break;
+                if(useAlphaBeta)
+                    break;
             }
         }
+        b=localAlpha+1;
     }
-
-
+    
+    
     stats->list->nextFree=offset;
     addKeyToTable(board->zobrist, depth, localAlpha, bounds,bestMove);
     *score-=localAlpha;
@@ -298,7 +316,53 @@ ChError searchRoot(ChessBoard* board, int depth, int alpha, int beta, AiStatisti
     ChError hr=ChError_OK;
     MoveList list={0};
     stats->list=&list;
+    Move hashMove;
+    char usedHashMove=0;
     
+    int bounds=2;//upper
+    /****
+     * HASH PROBING
+     */
+    if(useHashTables){
+        if((hr=probe(board->zobrist, depth,&alpha,&beta, &stats->bestMoveScore,&hashMove))){
+            //not in table
+        }else{
+            //exact matches do not help us, we only want the hash move
+        }
+        
+        if (memcmp(&hashMove, "\0\0\0\0", 4))
+        {    
+            History h={0};
+            hr=doMove(board,&hashMove,&h);
+            if(hr){return hr; }
+            
+            int tempScore=0;
+            hr=alphaBetaRecurse(board, depth-1, -beta,-alpha, &tempScore,useNullMoves,stats);
+            if(hr!=ChError_OK&&hr!=ChError_StaleMate&&hr!=ChError_CheckMate&&hr!=ChError_RepetitionDraw){
+                return hr;
+            }
+            
+            hr=undoMove(board, &hashMove,&h);
+            if(hr){return hr; }
+            
+            if(tempScore>alpha){
+                stats->bestMove= hashMove;
+                stats->bestMoveScore=tempScore;
+                alpha=tempScore;
+                bounds=0;//exact
+                usedHashMove=1;
+                if(alpha>(-MATE_SCORE-1000)){
+                    bounds=1;//lower
+                    stats->cutOffs++;
+                    return hr;
+                }
+                
+            }
+        }
+    }
+    /****
+     * Move generation
+     */
     hr=generateSortedMoves(board, board->colorToPlay, &list);
     //if checkmate or stalemate return
     switch(hr){
@@ -311,8 +375,14 @@ ChError searchRoot(ChessBoard* board, int depth, int alpha, int beta, AiStatisti
             return hr;
             break;
     }
-    
-
+    int b;
+    if(usedHashMove)
+        b=alpha+1;
+    else
+        b=beta;
+    /****
+     * Move probing
+     */
     for(int moveNumber=0;moveNumber<list.nextFree;moveNumber++){
         History h={0};
         Move* move=&list.array[moveNumber];
@@ -323,14 +393,27 @@ ChError searchRoot(ChessBoard* board, int depth, int alpha, int beta, AiStatisti
         }
         
         int tempScore=0;
-        hr=alphaBetaRecurse(board, depth-1, -beta,-alpha,&tempScore,1,stats);
-        if(hr!=ChError_OK&&hr!=ChError_StaleMate&&hr!=ChError_CheckMate&&hr!=ChError_RepetitionDraw){
-            freeMoveList(&list);
-            return hr;
+        
+        
+        if(usePVS){
+            hr=alphaBetaRecurse(board, depth-1, -b,-alpha,&tempScore,useNullMoves,stats);
+            if(hr!=ChError_OK&&hr!=ChError_StaleMate&&hr!=ChError_CheckMate&&hr!=ChError_RepetitionDraw){
+                freeMoveList(&list);
+                return hr;
+            }
+        }
+        //PVS failed
+        if((tempScore>alpha &&tempScore<beta && (moveNumber>0||usedHashMove))||!usePVS){
+            // printf("research PVS movenumber: %d\n",moveNumber);
+            tempScore=0; //research
+            hr=alphaBetaRecurse(board, depth-1, -beta,-alpha,&tempScore,useNullMoves,stats);
+            if(hr!=ChError_OK&&hr!=ChError_StaleMate&&hr!=ChError_CheckMate&&hr!=ChError_RepetitionDraw){
+                freeMoveList(&list);
+                return hr;
+            }
         }
         
         hr=undoMove(board, move,&h);
-        
         if(hr){
             freeMoveList(&list);
             return hr;
@@ -340,18 +423,21 @@ ChError searchRoot(ChessBoard* board, int depth, int alpha, int beta, AiStatisti
             stats->bestMove= list.array[moveNumber];
             stats->bestMoveScore=tempScore;
             alpha=tempScore;
+            bounds=0;//exact
             if(alpha>(-MATE_SCORE-1000)){
+                bounds=1;//lower
                 stats->cutOffs++;
-                break;
+                if(useAlphaBeta)
+                    break;
             }
             
         }
+        b=alpha+1;
     }
-    //addKeyToTable(board->zobrist, depth, stats->bestMoveScore);
+    addKeyToTable(board->zobrist, depth, stats->bestMoveScore,bounds,stats->bestMove);
     freeMoveList(&list);
     return ChError_OK;
 }
-
 ChError doAiMove(ChessBoard* board, Properties* aiProperties){
    
     clearTable();
@@ -374,18 +460,20 @@ ChError doAiMove(ChessBoard* board, Properties* aiProperties){
             return hr;
         
         //fell out of aspiration window, search again
-       if(stats.bestMoveScore<=alpha||stats.bestMoveScore>=beta){
-          alpha=-INIT_ALPHA;
-          beta=INIT_ALPHA;
-          printf("have to search again\n");
-          depth--;//search same depth again
-          continue;
+        if(useAspiration){
+            if(stats.bestMoveScore<=alpha||stats.bestMoveScore>=beta){
+                alpha=-INIT_ALPHA;
+                beta=INIT_ALPHA;
+                printf("have to search again\n");
+                depth--;//search same depth again
+                continue;
+            }else{
+                alpha=stats.bestMoveScore-ASPIRATION_SIZE;
+                beta=stats.bestMoveScore+ASPIRATION_SIZE;
+            }
         }else{
-            alpha=stats.bestMoveScore-ASPIRATION_SIZE;
-            beta=stats.bestMoveScore+ASPIRATION_SIZE;
             alpha=-INIT_ALPHA;
-            beta=INIT_ALPHA;
-
+            beta=INIT_ALPHA;            
         }
         char charMove[6];    
         moveToChar(&stats.bestMove, charMove);
