@@ -121,10 +121,10 @@ ChError readFENString(ChessBoard* board, char* fen){
     board->whitePieceScore=0;
     //reset piece index
     for(int i=0;i<16;i++){
-        board->whiteToSquare[i].piece=-5;
-        board->blackToSquare[i].piece=-5;
-        board->whiteToSquare[i].location=-5;
-        board->blackToSquare[i].location=-5;
+        board->whiteToSquare[i].piece=NO_PIECE;
+        board->blackToSquare[i].piece=NO_PIECE;
+        board->whiteToSquare[i].location=NO_LOCATION;
+        board->blackToSquare[i].location=NO_LOCATION;
         
     }
     //board piece index
@@ -289,7 +289,7 @@ ChError readFENString(ChessBoard* board, char* fen){
     }
     
     if(fen[stringIndex]=='-'){
-        board->enPassantSquare=-5;
+        board->enPassantSquare=NO_LOCATION;
         stringIndex++;
     }else{
         if(fen[stringIndex]>='a'&&fen[stringIndex]<='h'){
@@ -1313,7 +1313,7 @@ ChError generateMoves(ChessBoard* board,enum Color color, MoveList* moveList){
     //generateAttackMap(board, color==WHITE?BLACK:WHITE);
     int offset=moveList->nextFree;
     for(int i=0;i<16;i++){
-        if(pieceArray[i].location==-5){
+        if(pieceArray[i].location==NO_LOCATION){
             continue;
         }
         generateMoveForPosition(board,&pieceArray[i], moveList,usePins,pinnedPieces);
@@ -1342,13 +1342,53 @@ int compareMoves(void* b, const void* mv1, const void* mv2){
         move1Score+=getPieceScore(board->tiles[move1->to]->piece)*100;
         move1Score-=getPieceScore(board->tiles[move1->from]->piece);
     }else{
-        move1Score+=-getPieceScore(king)+getPieceScore(board->tiles[move1->from]->piece)/2;
+        switch(board->tiles[move1->from]->piece){
+            case pawn:
+                move1Score+=10;
+                break;
+            case queen:
+                move1Score+=9;
+                break;
+            case rook:
+                move1Score+=7;
+                break;
+            case knight:
+                move1Score+=6;
+                break;
+            case bishop:
+                move1Score+=5;
+                break;
+            case king:
+                move1Score+=4;
+                break;
+                
+        }
     }
     if(board->tiles[move2->to]!=NULL){
         move2Score+=getPieceScore(board->tiles[move2->to]->piece)*100;
         move2Score-=getPieceScore(board->tiles[move2->from]->piece);
     }else{
-        move2Score+=-getPieceScore(king)+getPieceScore(board->tiles[move2->from]->piece)/2;
+        switch(board->tiles[move2->from]->piece){
+            case pawn:
+                move2Score+=10;
+                break;
+            case queen:
+                move2Score+=9;
+                break;
+            case rook:
+                move2Score+=7;
+                break;
+            case knight:
+                move2Score+=6;
+                break;
+            case bishop:
+                move2Score+=5;
+                break;
+            case king:
+                move2Score+=4;
+                break;
+                
+        }
     }
     
     if(move2Score>move1Score){
@@ -1358,6 +1398,7 @@ int compareMoves(void* b, const void* mv1, const void* mv2){
     }
     return 0;
 }
+
 
 ChError generateSortedMoves(ChessBoard* board,enum Color color, MoveList* moveList){
     ChError hr;
