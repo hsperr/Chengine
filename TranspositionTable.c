@@ -42,7 +42,7 @@ ChError decrementRepetitionTable(u_int64_t* zobrist){
     return ChError_OK;
 }
 long probeRepetitionTable(u_int64_t* zobrist){
-    long index=*zobrist%tableSize;
+    long index=*(zobrist)%tableSize;
     
     return repetitionTable[index];
 }

@@ -21,20 +21,20 @@ int main (int argc, const char * argv[])
     initTable(1048576*16);
     
     newGame.isRunning=1;
-    newGame.aiPlayer[WHITE].depth=6;
-    newGame.aiPlayer[WHITE].timelimit=500;
-    newGame.aiPlayer[WHITE].isAi=1;
+    newGame.aiPlayer[WHITE].depth=0;
+    newGame.aiPlayer[WHITE].timelimit=10000;
+    newGame.aiPlayer[WHITE].isAi=0;
     
-    newGame.aiPlayer[BLACK].depth=6;
-    newGame.aiPlayer[BLACK].timelimit=500;
-    newGame.aiPlayer[BLACK].isAi=1;
+    newGame.aiPlayer[BLACK].depth=0;
+    newGame.aiPlayer[BLACK].timelimit=10000;
+    newGame.aiPlayer[BLACK].isAi=0;
     
     if((hr=initBoard(&newGame.board))){
         printf("After init board:");
         printError(hr);
     }
 
-    readFENString(&newGame.board, "2q1rr1k/3bbnnp/p2p1pp1/2pPp3/PpP1P1P1/1P2BNNP/2BQ1PRK/7R b - - 0 0");
+    //readFENString(&newGame.board, "7k/5K2/5P1p/3p4/6P1/3p4/8/8 w - - 0 1");
     //printf("Evaluate: %d\n",evaluate(&newGame.board));
     printBoardE(&newGame.board);
     while(newGame.isRunning){
@@ -60,6 +60,12 @@ int main (int argc, const char * argv[])
                         newGame.aiPlayer[BLACK].isAi=0;
                         newGame.aiPlayer[WHITE].isAi=0;
                     break;
+                case ChError_RepetitionDraw:
+                    printf("1/2-1/2 {Repetition Draw}\n");
+                    newGame.aiPlayer[BLACK].isAi=0;
+                    newGame.aiPlayer[WHITE].isAi=0;
+                    break;
+
                 default:
                      printf("After doAiMove:");
                     printError(hr);

@@ -11,14 +11,33 @@
 #define MATE_SCORE -300000
 #define INIT_ALPHA 1000000
 
-int centerValue[]={1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,
-                 1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,
-                 2,2,3,3,3,3,2,2,0,0,0,0,0,0,0,0,
-                 2,2,3,4,4,3,2,2,0,0,0,0,0,0,0,0,
-                 2,2,3,4,4,3,2,2,0,0,0,0,0,0,0,0,
-                 2,2,3,3,3,3,2,2,0,0,0,0,0,0,0,0,
-                 1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,
-                 1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0};
+int centerWhiteValue[]={1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,
+    3,4,4,5,5,4,4,3,0,0,0,0,0,0,0,0,
+    3,4,4,4,4,4,4,3,0,0,0,0,0,0,0,0,
+    2,2,4,4,4,4,2,2,0,0,0,0,0,0,0,0,
+    2,2,3,4,4,3,2,2,0,0,0,0,0,0,0,0,
+    2,2,3,3,3,3,2,2,0,0,0,0,0,0,0,0,
+    1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,
+    1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0};
+int centerBlackValue[]={1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,
+    1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,
+    2,2,3,3,3,3,2,2,0,0,0,0,0,0,0,0,
+    2,2,3,4,4,3,2,2,0,0,0,0,0,0,0,0,
+    2,2,3,4,4,3,2,2,0,0,0,0,0,0,0,0,
+    2,2,4,4,4,4,2,2,0,0,0,0,0,0,0,0,
+    3,4,4,5,5,4,4,3,0,0,0,0,0,0,0,0,
+    3,4,4,4,4,4,4,3,0,0,0,0,0,0,0,0};
+/*
+
+ {1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,
+ 1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,
+ 1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,
+ 1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,
+ 1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,
+ 1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,
+ 1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,
+ 1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0}
+ */
 
 
 typedef struct AiStatistics{
@@ -41,6 +60,13 @@ const char useNullMoves=0;
 const char useAspiration=1;
 const int ASPIRATION_SIZE=10;
 
+const int TIME_CHECK_INTERVAL=1000;
+int nextTimeCheck=1000;
+long startTime=0;
+int timeForThisMove=0;
+int stopSearch=0;
+
+
 int evaluate(ChessBoard* board){
     int score=0;
     if(board->colorToPlay==BLACK)
@@ -51,14 +77,14 @@ int evaluate(ChessBoard* board){
     for(int i=0;i<16;i++){
         if(board->colorToPlay==BLACK){
             if(board->whiteToSquare[i].location>=0)
-                score-=centerValue[board->whiteToSquare[i].location];
+                score-=centerWhiteValue[board->whiteToSquare[i].location];
             if(board->blackToSquare[i].location>=0)
-                score+=centerValue[board->blackToSquare[i].location];
+                score+=centerBlackValue[board->blackToSquare[i].location];
         }else{
             if(board->whiteToSquare[i].location>=0)
-                score+=centerValue[board->whiteToSquare[i].location];
+                score+=centerWhiteValue[board->whiteToSquare[i].location];
             if(board->blackToSquare[i].location>=0)
-                score-=centerValue[board->blackToSquare[i].location];
+                score-=centerBlackValue[board->blackToSquare[i].location];
         }
     }
     
@@ -129,6 +155,21 @@ static ChError alphaBetaRecurse(ChessBoard* board, int depth, int alpha, int bet
     int bounds = 2; // upper
     char usedHashMove=0;
     
+    nextTimeCheck--;
+    if(nextTimeCheck==0){
+        nextTimeCheck=TIME_CHECK_INTERVAL;
+        if((clock()-startTime)/CLOCKS_PER_SEC>timeForThisMove){
+            stopSearch=1;
+        }
+        return ChError_OK;
+    }
+    
+    if(probeRepetitionTable(&board->zobrist)>=3){
+        localAlpha=0;
+        *score=localAlpha;
+        return hr;
+    }
+    
     if(depth<=0){
         stats->allMovesCalculated++;
         stats->movesPerIterationCalculated++;
@@ -147,7 +188,7 @@ static ChError alphaBetaRecurse(ChessBoard* board, int depth, int alpha, int bet
                 *score=localAlpha;
                 break;
             case ChError_CheckMate:
-                localAlpha=-MATE_SCORE;
+                localAlpha=MATE_SCORE;
                 *score-=localAlpha;
                 break;
             default:
@@ -207,6 +248,7 @@ static ChError alphaBetaRecurse(ChessBoard* board, int depth, int alpha, int bet
             setEnPassantZobrist(&board->zobrist, board->enPassantSquare,-5);
             int temp=board->enPassantSquare;
             board->enPassantSquare=-5;
+            
             int eval =0;
             hr=alphaBetaRecurse(board, depth-1-2, -beta,
                                 -beta+1, &eval, 0,stats);
@@ -217,10 +259,11 @@ static ChError alphaBetaRecurse(ChessBoard* board, int depth, int alpha, int bet
             switchColorZobrist(&board->zobrist);
             setEnPassantZobrist(&board->zobrist, temp,-5);
             board->enPassantSquare=temp;
+            
             if(eval >= beta){
                 bounds = 1; //lower
                 addKeyToTable(board->zobrist, depth, eval, bounds,bestMove);
-                *score-=eval;
+                *score-=beta;
                 return hr;
             }
         }
@@ -239,7 +282,7 @@ static ChError alphaBetaRecurse(ChessBoard* board, int depth, int alpha, int bet
         case ChError_CheckMate:
             assert(stats->list->nextFree==offset);
             stats->list->nextFree=offset;
-            localAlpha=-MATE_SCORE;
+            localAlpha=MATE_SCORE;
             break;
         default:
             return hr;
@@ -259,7 +302,7 @@ static ChError alphaBetaRecurse(ChessBoard* board, int depth, int alpha, int bet
     }else{
         b=beta;
     }
-    for(int moveNumber=offset;moveNumber<stats->list->nextFree;moveNumber++){
+    for(int moveNumber=offset;moveNumber<stats->list->nextFree&&!stopSearch;moveNumber++){
         History h={0};
         Move* move=&stats->list->array[moveNumber];
         hr=doMove(board,move,&h);
@@ -383,7 +426,7 @@ ChError searchRoot(ChessBoard* board, int depth, int alpha, int beta, AiStatisti
     /****
      * Move probing
      */
-    for(int moveNumber=0;moveNumber<list.nextFree;moveNumber++){
+    for(int moveNumber=0;moveNumber<list.nextFree&&!stopSearch;moveNumber++){
         History h={0};
         Move* move=&list.array[moveNumber];
         hr=doMove(board,move,&h);
@@ -443,18 +486,18 @@ ChError doAiMove(ChessBoard* board, Properties* aiProperties){
     clearTable();
     int alpha=-INIT_ALPHA;
     int beta = INIT_ALPHA;
-
     ChError hr=ChError_OK;
-    
     AiStatistics stats={0};
 
+    timeForThisMove=aiProperties->timelimit/40000;
+    startTime=clock();
+    stopSearch=0;
+    nextTimeCheck=TIME_CHECK_INTERVAL;
     
     long time=clock();
 
-   
-
     //iterative deepening
-    for(int depth=1;depth<=aiProperties->depth;depth++){
+    for(int depth=1;depth<=64&&!stopSearch;depth++){
         hr=searchRoot(board, depth, alpha, beta, &stats);
         if(hr)
             return hr;
@@ -490,10 +533,16 @@ ChError doAiMove(ChessBoard* board, Properties* aiProperties){
     printf("#Found best move %s in %f sec out of %d nodes having %f nodes/sec.\n",charMove,((float)(clock()-time)/CLOCKS_PER_SEC),stats.allMovesCalculated,(stats.allMovesCalculated+stats.quietNodes)/((float)(clock()-time)/CLOCKS_PER_SEC));
     printf("#This run i had %d tableLookups and %d cutoffs and %d quiet nodes.\n",stats.tableLookUpsFound,stats.cutOffs,stats.quietNodes);
     
+    
+    aiProperties->timelimit-=(clock()-startTime)/CLOCKS_PER_SEC*1000;
     printf("move %s\n",charMove);
     doMove(board, &stats.bestMove,&h);
     printBoardE(board);
-
+    
+    
+    if(probeRepetitionTable(&board->zobrist)>=3){
+        hr=ChError_RepetitionDraw;
+    }
     
     return hr;
 }

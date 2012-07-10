@@ -908,6 +908,7 @@ ChError undoMove(ChessBoard* board,Move* move, History* history){
     assert(board->zobrist==zobrist);
 #endif
     assert(board->tiles[move->to]!=NULL);
+    decrementRepetitionTable(&board->zobrist);
     board->colorToPlay=board->colorToPlay==WHITE?BLACK:WHITE;
     board->zobrist=history->zobrist;
     board->castlingRights=history->castlingRights;
@@ -981,7 +982,6 @@ ChError undoMove(ChessBoard* board,Move* move, History* history){
     
     board->playedMoves.nextFree--;
     
-    decrementRepetitionTable(&board->zobrist);
     
 #ifdef DEBUG
     u_int64_t zobrist2=getZobristHash(board);
