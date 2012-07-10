@@ -40,6 +40,16 @@ void printMoveList(MoveList* moveList){
     }
 }
 
+void printMoveListFromOffset(MoveList* moveList, int fromOffset){
+    char charMove[6];
+    for(int i=fromOffset;i<moveList->nextFree;i++){
+        moveToChar(&moveList->array[i],charMove);
+        
+        printf("%d. %s - ",i,charMove);
+    }
+    printf("\n");
+}
+
 void printError(ChError hr){
     printf("ERROR: ");
     switch(hr){

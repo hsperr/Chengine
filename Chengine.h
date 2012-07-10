@@ -24,7 +24,7 @@
 #endif
 
 
-typedef int PIECE;
+typedef char PIECE;
 typedef enum Color {WHITE=0,BLACK=1}Color;
 
 
@@ -71,10 +71,10 @@ typedef struct History{
 }History;
 
 typedef struct Move{
-    int from;
-    int to;
-    PIECE promote;
-    enum MoveType moveType;
+    char from;
+    char to;
+    char promote;
+    char moveType;
 }Move;
 
 typedef struct MoveList{
@@ -136,6 +136,7 @@ typedef struct Game{
 ChError addToMoveList(MoveList* moveList, Move* move);
 void freeMoveList(MoveList* moveList);
 void printMoveList(MoveList* moveList);
+void printMoveListFromOffset(MoveList* moveList, int fromOffset);
 void printError(ChError hr);
 
 #include "Board.h"

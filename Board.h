@@ -28,6 +28,7 @@ ChError generateMoves(ChessBoard* board,enum Color color, MoveList* moveList);
 ChError generateSortedMoves(ChessBoard* board,enum Color color, MoveList* moveList);
 ChError generateCaptures(ChessBoard* board,enum Color color, MoveList* moveList);
 ChError generateMoveForPosition(ChessBoard* board,const PieceInfo* pieceInfo, MoveList* moveList, int usePins, Pin* pinnedPieces);
+void generateAttackMap(ChessBoard* board, enum Color attackerColor, int* attackMap);
 
 ChError doMove(ChessBoard* board, Move* move, History* history);
 ChError undoMove(ChessBoard* board, Move* move, History* history);
@@ -40,6 +41,7 @@ int isCheck(ChessBoard* board, Color color);
 int isAttacked(ChessBoard* board, int position, enum Color color);
 ChError isLegal(ChessBoard* board, Move* move);
 
+int getPieceScore(PIECE piece);
 
 PieceInfo* getPieceForTile(ChessBoard* board, int tileIndex);
 

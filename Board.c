@@ -73,7 +73,7 @@ static inline int SAME_COLUMN(int position1, int position2){return COLUMN(positi
 
 static inline int IS_PROMOTE_ROW(int position,enum Color color) {return (color==WHITE&&ROW(position)==0)||(color==BLACK&&ROW(position)==8);};
 
-static char attackMap[127];
+static int pieceValues[]={100,300,100000,300,500,900};
 
 
 
@@ -129,7 +129,6 @@ ChError readFENString(ChessBoard* board, char* fen){
     //board piece index
     for(int i=0;i<127;i++){
         board->tiles[i]=NULL;
-        attackMap[i]=0;
     }
     //in board representation of fen string there is no " " 
     for(;fen[stringIndex]!=' ';stringIndex++){
@@ -328,31 +327,8 @@ ChError readFENString(ChessBoard* board, char* fen){
     
     return ChError_OK;
 }
-static int getPieceScore(PIECE piece){
-    int score=0;
-    switch (piece) {
-        case king:
-            score=100000;
-            break;
-        case queen:
-            score=900;
-            break;
-        case rook:
-            score=500;
-            break;
-        case pawn:
-            score=100;
-            break;
-        case knight:
-            score=300;
-            break;
-        case bishop:
-            score=300;
-            break;
-        default:
-            break;
-    }
-    return score;
+int getPieceScore(PIECE piece){
+    return pieceValues[piece];
 }
 
 ChError insertPiece(ChessBoard* board, PIECE pieceType, Color color, int location){
@@ -595,7 +571,7 @@ ChError getPinnedPiecePositions(ChessBoard* board, enum Color color, Pin* pieceL
     return hr;
 }
 
-void generateAttackMap(ChessBoard* board, enum Color attackerColor){
+void generateAttackMap(ChessBoard* board, enum Color attackerColor, int* attackMap){
     for(int i=0;i<127;i++){
         attackMap[i]=0;
     }
@@ -611,20 +587,20 @@ void generateAttackMap(ChessBoard* board, enum Color attackerColor){
         switch(nextPiece.piece){
             case pawn:
                 if(IS_ON_BOARD(nextPiece.location+direction*0x0F))
-                    attackMap[nextPiece.location+direction*0x0F]+=1;
+                    attackMap[nextPiece.location+direction*0x0F]+=100;
                 if(IS_ON_BOARD(nextPiece.location+direction*0x11))
-                    attackMap[nextPiece.location+direction*0x11]+=1;
+                    attackMap[nextPiece.location+direction*0x11]+=100;
                 break;
             case knight:
                 for(int i=0;i<8;i++){
                     if(IS_ON_BOARD(nextPiece.location+knightdeltas[i]))
-                        attackMap[nextPiece.location+knightdeltas[i]]+=1;
+                        attackMap[nextPiece.location+knightdeltas[i]]+=300;
                 }
                 break;
             case king:
                 for(int i=0;i<8;i++){
                     if(IS_ON_BOARD(nextPiece.location+kingdeltas[i]))
-                        attackMap[nextPiece.location+kingdeltas[i]]+=1;
+                        attackMap[nextPiece.location+kingdeltas[i]]+=10000;
                 }
                 break;
             case queen:
@@ -632,7 +608,7 @@ void generateAttackMap(ChessBoard* board, enum Color attackerColor){
                     int delta=rookdeltas[i];
                     int nextPosition=nextPiece.location+delta;
                     while(IS_ON_BOARD(nextPosition)){
-                        attackMap[nextPosition]+=1;
+                        attackMap[nextPosition]+=900;
                         if(board->tiles[nextPosition])
                             break;
                         
@@ -644,7 +620,7 @@ void generateAttackMap(ChessBoard* board, enum Color attackerColor){
                     int delta=bishopdeltas[i];
                     int nextPosition=nextPiece.location+delta;
                     while(IS_ON_BOARD(nextPosition)){
-                        attackMap[nextPosition]+=1;
+                        attackMap[nextPosition]+=900;
                         if(board->tiles[nextPosition])
                             break;
                         
@@ -658,7 +634,7 @@ void generateAttackMap(ChessBoard* board, enum Color attackerColor){
                     int delta=rookdeltas[i];
                     int nextPosition=nextPiece.location+delta;
                     while(IS_ON_BOARD(nextPosition)){
-                        attackMap[nextPosition]+=1;
+                        attackMap[nextPosition]+=500;
                         if(board->tiles[nextPosition])
                             break;
                         
@@ -672,7 +648,7 @@ void generateAttackMap(ChessBoard* board, enum Color attackerColor){
                     int delta=bishopdeltas[i];
                     int nextPosition=nextPiece.location+delta;
                     while(IS_ON_BOARD(nextPosition)){
-                        attackMap[nextPosition]+=1;
+                        attackMap[nextPosition]+=500;
                         if(board->tiles[nextPosition])
                             break;
                         
@@ -909,6 +885,8 @@ ChError doMove(ChessBoard* board, Move* move, History* history){
     
     addToMoveList(&board->playedMoves, move);
     
+    incrementRepetitionTable(&board->zobrist);
+    
     if(history->capturedPiece==NULL&&board->tiles[move->to]!=pawn)
         board->repetitionMoves++;
     else
@@ -1002,6 +980,8 @@ ChError undoMove(ChessBoard* board,Move* move, History* history){
     
     board->playedMoves.nextFree--;
     
+    decrementRepetitionTable(&board->zobrist);
+    
 #ifdef DEBUG
     u_int64_t zobrist2=getZobristHash(board);
     assert(board->zobrist==zobrist2);
@@ -1015,10 +995,7 @@ int isCheck(ChessBoard* board, Color color){
 }
 static ChError addMove(ChessBoard* board,int from, int to, PIECE promotion, enum MoveType type, MoveList* list, int usePins, Pin* pinnedPieces){
     ChError hr=ChError_OK;
-#ifdef DEBUG
-    u_int64_t zobrist=getZobristHash(board);
-    assert(board->zobrist==zobrist);
-#endif
+
     //if piece is pinned it can only move if it hits the pinning piece
     if(usePins&&type!=ENPASSANT){
         for(int i=0;i<9;i++){
@@ -1077,10 +1054,7 @@ static ChError addMove(ChessBoard* board,int from, int to, PIECE promotion, enum
                 board->tiles[to]->location=to;  
         }
         board->tiles[from]->location=from;
-#ifdef DEBUG
-        u_int64_t zobrist=getZobristHash(board);
-        assert(board->zobrist==zobrist);
-#endif    
+  
         if(add){
             Move move={NO_LOCATION};
             move.from=from;
@@ -1364,14 +1338,16 @@ int compareMoves(void* b, const void* mv1, const void* mv2){
     int move2Score=0;
     
     if(board->tiles[move1->to]!=NULL){
-        move1Score=getPieceScore(board->tiles[move1->to]->piece)-getPieceScore(board->tiles[move1->from]->piece)+500;
+        move1Score+=getPieceScore(board->tiles[move1->to]->piece)*100;
+        move1Score-=getPieceScore(board->tiles[move1->from]->piece);
     }else{
-        move1Score=-1000+getPieceScore(board->tiles[move1->from]->piece);
+        move1Score+=-getPieceScore(king)+getPieceScore(board->tiles[move1->from]->piece)/2;
     }
     if(board->tiles[move2->to]!=NULL){
-        move2Score=getPieceScore(board->tiles[move2->to]->piece)-getPieceScore(board->tiles[move2->from]->piece)+500;
+        move2Score+=getPieceScore(board->tiles[move2->to]->piece)*100;
+        move2Score-=getPieceScore(board->tiles[move2->from]->piece);
     }else{
-        move2Score=-1000+getPieceScore(board->tiles[move2->from]->piece);
+        move2Score+=-getPieceScore(king)+getPieceScore(board->tiles[move2->from]->piece)/2;
     }
     
     if(move2Score>move1Score){
@@ -1391,7 +1367,10 @@ ChError generateSortedMoves(ChessBoard* board,enum Color color, MoveList* moveLi
     
 
     Move* move=&moveList->array[nextFree];
-    qsort_r(move, moveList->nextFree-nextFree, 0x10, board, &compareMoves);
+    qsort_r(move, moveList->nextFree-nextFree, sizeof(Move), board, &compareMoves);
+    
+   // printBoardE(board);
+   // printMoveListFromOffset(moveList, nextFree);
     
 
     return hr;
@@ -1400,14 +1379,10 @@ ChError generateSortedMoves(ChessBoard* board,enum Color color, MoveList* moveLi
 ChError generateCaptures(ChessBoard* board,enum Color color, MoveList* moveList){
     ChError hr;
     int nextFree=moveList->nextFree;
-    hr=generateMoves(board, color, moveList);
+    hr=generateSortedMoves(board, color, moveList);
     if(hr)
         return hr;
-    
-    
-    Move* move=&moveList->array[nextFree];
-    qsort_r(move, moveList->nextFree-nextFree, 0x10, board, &compareMoves);
-    
+
     int capturesMoves=0;
     for(int i=nextFree;i<moveList->nextFree;i++){
         if(board->tiles[moveList->array[i].to])
@@ -1416,6 +1391,8 @@ ChError generateCaptures(ChessBoard* board,enum Color color, MoveList* moveList)
             break;
     }
     
+  //  printMoveListFromOffset(moveList,nextFree);
+       
     moveList->nextFree=nextFree+capturesMoves;
     
     return hr;

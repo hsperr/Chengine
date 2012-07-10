@@ -12,20 +12,40 @@ typedef struct TableEntry{
     int64_t zobrist; //collision detection
     int depth;    //depth searched to, from this keys position
     int score;    //score found from this position
-//    Move move;    //best move for ordering
+    int bound;      //0=exact,1=lowerbound,2=upperbound
+    Move move;    //best move for ordering
 //    Move betaCutoff move
 
 }TableEntry;
+
 
 u_int64_t BLACKTOPLAY;
 u_int64_t CASTLING_RIGHTS[16]; //KQkq
 u_int64_t PIECES[6][2][64];
 u_int64_t enPassant[8];
 
-u_int64_t indexMask=0;
 
 TableEntry* hashTable;
+long tableSize=0;
 
+long* repetitionTable;
+
+
+ChError incrementRepetitionTable(u_int64_t* zobrist){
+     u_int64_t index=*(zobrist)%tableSize;
+    repetitionTable[index]++;
+    return ChError_OK;
+}
+ChError decrementRepetitionTable(u_int64_t* zobrist){
+    u_int64_t index=*(zobrist)%tableSize;
+    repetitionTable[index]--;
+    return ChError_OK;
+}
+long probeRepetitionTable(u_int64_t* zobrist){
+    long index=*zobrist%tableSize;
+    
+    return repetitionTable[index];
+}
 
 u_int64_t rand64(void)
 {
@@ -33,7 +53,8 @@ u_int64_t rand64(void)
     ((u_int64_t)rand() << 45) ^ ((u_int64_t)rand() << 60);
 }
 
-ChError initTable(long size, long inMask){
+ChError initTable(long size){
+    tableSize=size;
     srand(17L);
     
      BLACKTOPLAY=rand64();
@@ -58,14 +79,23 @@ ChError initTable(long size, long inMask){
     if(!hashTable)
         return ChError_Resources;
     
-    for(long i=0;i<size;i++){
-        hashTable[i].zobrist=0;
-    }
-    indexMask=inMask;
+    repetitionTable=malloc(size*sizeof(long));
+    if(!repetitionTable)
+        return ChError_Resources;
+    
+    memset(hashTable,0,sizeof(TableEntry)*tableSize);
+    memset(repetitionTable,0,sizeof(long)*tableSize);
     
     return ChError_OK;
 
 }
+ChError clearTable(void){
+    
+    memset(hashTable, 0, sizeof(TableEntry)*tableSize);
+    
+    return ChError_OK;
+}
+
 int locationToIndex(int location){
     return location-(((location&0xF0)>>4)*8);
 }
@@ -96,19 +126,33 @@ u_int64_t getZobristHash(ChessBoard* board){
     return zobrist;
 }
 
-ChError probe(u_int64_t zobrist, int depth,int* score){
+ChError probe(u_int64_t zobrist, int depth, int* alpha, int* beta, int* score, Move* move){
     if(depth==0)
         return ChError_NotInTable;
     
-    long index=zobrist&indexMask;
+    long index=zobrist%tableSize;
     
     TableEntry* entry=&hashTable[index];
     
     if(entry->zobrist==zobrist){
+        *move=entry->move;
         //we found that position before
         if(entry->depth>=depth){
-            *score=entry->score;
-            return ChError_OK;
+            switch (entry->bound){
+                case 0:
+                    *score=entry->score;
+                    return ChError_OK;
+                case 1: //lower
+                    *alpha = max(*alpha, entry->score);
+                    break;
+                case 2: //upper
+                    *beta = min(*beta, entry->score);
+                    break;
+            }     
+            if (*alpha >= *beta) {
+                *score=entry->score;
+                return ChError_OK;
+            }
         }else{
             return ChError_DepthToLow;
         }
@@ -144,38 +188,43 @@ ChError setEnPassantZobrist(u_int64_t* zobrist, int oldEnPassant, int newEnPassa
     }
     return ChError_OK;
 }
-ChError addKeyToTable(u_int64_t zobrist, int depth, int score){
+ChError addKeyToTable(u_int64_t zobrist, int depth, int score, int bound, Move move){
     if(depth==0)
         return ChError_OK;
     
-    u_int64_t index=zobrist&indexMask;
+    u_int64_t index=zobrist%tableSize;
 
     TableEntry* entry=&hashTable[index];
     
-    if(entry->zobrist!=0&&entry->zobrist!=zobrist){
+    //if(entry->zobrist!=0&&entry->zobrist!=zobrist){
         //collision //always replace
         entry->zobrist=zobrist;
         entry->depth=depth;
         entry->score=score;
-    }
-    if(entry->zobrist==zobrist){
+        entry->bound=bound;
+        entry->move=move;
+    //}
+    //if(entry->zobrist==zobrist){
         //we found that position before
-        if(entry->depth<depth){
-            entry->depth=depth;
-            entry->score=score;
-        }else if(entry->depth==depth&&score>=entry->score){
-            entry->depth=depth;
-            entry->score=score;
-        }
-    }else{
-        entry->zobrist=zobrist;
-        entry->depth=depth;
-        entry->score=score;
-    }
+    //    if(entry->depth<depth){
+    //        entry->depth=depth;
+    //        entry->score=score;
+    //    }else if(entry->depth==depth&&score>=entry->score){
+    //        entry->depth=depth;
+    //        entry->score=score;
+    //    }
+   // }else{
+   //     entry->zobrist=zobrist;
+   //     entry->depth=depth;
+   //     entry->score=score;
+   // }
     return ChError_OK;
 }
 
 void freeTable(){
     if(hashTable)
         free(hashTable);
+    
+    if(repetitionTable)
+        free(repetitionTable);
 }

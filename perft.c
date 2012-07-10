@@ -79,11 +79,11 @@ long perft_hash_rec(ChessBoard* board, Color sideToMove, int depth, MoveList* li
     long moves=0;
 
      
-    if((hr=probe(board->zobrist, depth, (int*)&moves))){
+   /* if((hr=probe(board->zobrist, depth, (int*)&moves))){
         //not in table
     }else{
         return moves;
-    }
+    }*/
     
     int startOffset=list->nextFree;
     hr=generateMoves(board, sideToMove, list);
@@ -108,7 +108,7 @@ long perft_hash_rec(ChessBoard* board, Color sideToMove, int depth, MoveList* li
         undoMove(board,move,&h);
     }
     list->nextFree=startOffset;
-    addKeyToTable(board->zobrist, depth, (int)moves);
+   // addKeyToTable(board->zobrist, depth, (int)moves);
     return moves;
 }
 
@@ -118,7 +118,7 @@ long perft_hash(ChessBoard* board, int depth){
     ChError hr=ChError_OK;    
     MoveList moveList = {0};
     
-    if((hr=probe(board->zobrist, depth, (int*)&moved))){
+   /* if((hr=probe(board->zobrist, depth, (int*)&moved))){
         moved=0;
         hr=generateMoves(board, board->colorToPlay, &moveList);
         if(hr!=ChError_OK&&hr!=ChError_StaleMate&&hr!=ChError_CheckMate){
@@ -135,7 +135,7 @@ long perft_hash(ChessBoard* board, int depth){
         addKeyToTable(board->zobrist, depth, (int)moved);
     }else{
         
-    }
+    }*/
   
     freeMoveList(&moveList);
     double timeNeeded=((double)(clock()-time)/CLOCKS_PER_SEC);

@@ -18,14 +18,14 @@ int main (int argc, const char * argv[])
     
     Game newGame;
     ChError hr;
-    initTable(1048576 , 0xFFFFF);
+    initTable(1048576*16);
     
     newGame.isRunning=1;
-    newGame.aiPlayer[WHITE].depth=4;
+    newGame.aiPlayer[WHITE].depth=10;
     newGame.aiPlayer[WHITE].timelimit=500;
     newGame.aiPlayer[WHITE].isAi=0;
     
-    newGame.aiPlayer[BLACK].depth=5;
+    newGame.aiPlayer[BLACK].depth=7;
     newGame.aiPlayer[BLACK].timelimit=500;
     newGame.aiPlayer[BLACK].isAi=1;
     
@@ -34,8 +34,8 @@ int main (int argc, const char * argv[])
         printError(hr);
     }
 
-    //readFENString(&newGame.board, "k7/q5R1/8/8/3b4/8/Q7/K7 w - - 0 0");
-    printf("Evaluate: %d\n",evaluate(&newGame.board));
+    readFENString(&newGame.board, "2q1rr1k/3bbnnp/p2p1pp1/2pPp3/PpP1P1P1/1P2BNNP/2BQ1PRK/7R b - - 0 0");
+    //printf("Evaluate: %d\n",evaluate(&newGame.board));
     printBoardE(&newGame.board);
     while(newGame.isRunning){
             
