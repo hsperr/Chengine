@@ -196,28 +196,14 @@ ChError addKeyToTable(u_int64_t zobrist, int depth, int score, int bound, Move m
 
     TableEntry* entry=&hashTable[index];
     
-    //if(entry->zobrist!=0&&entry->zobrist!=zobrist){
+
         //collision //always replace
         entry->zobrist=zobrist;
         entry->depth=depth;
         entry->score=score;
         entry->bound=bound;
         entry->move=move;
-    //}
-    //if(entry->zobrist==zobrist){
-        //we found that position before
-    //    if(entry->depth<depth){
-    //        entry->depth=depth;
-    //        entry->score=score;
-    //    }else if(entry->depth==depth&&score>=entry->score){
-    //        entry->depth=depth;
-    //        entry->score=score;
-    //    }
-   // }else{
-   //     entry->zobrist=zobrist;
-   //     entry->depth=depth;
-   //     entry->score=score;
-   // }
+    
     return ChError_OK;
 }
 

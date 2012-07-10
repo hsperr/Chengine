@@ -23,18 +23,18 @@ int main (int argc, const char * argv[])
     newGame.isRunning=1;
     newGame.aiPlayer[WHITE].depth=10;
     newGame.aiPlayer[WHITE].timelimit=500;
-    newGame.aiPlayer[WHITE].isAi=0;
+    newGame.aiPlayer[WHITE].isAi=1;
     
-    newGame.aiPlayer[BLACK].depth=7;
+    newGame.aiPlayer[BLACK].depth=9;
     newGame.aiPlayer[BLACK].timelimit=500;
-    newGame.aiPlayer[BLACK].isAi=1;
+    newGame.aiPlayer[BLACK].isAi=0;
     
     if((hr=initBoard(&newGame.board))){
         printf("After init board:");
         printError(hr);
     }
 
-    readFENString(&newGame.board, "2q1rr1k/3bbnnp/p2p1pp1/2pPp3/PpP1P1P1/1P2BNNP/2BQ1PRK/7R b - - 0 0");
+    //readFENString(&newGame.board, "2q1rr1k/3bbnnp/p2p1pp1/2pPp3/PpP1P1P1/1P2BNNP/2BQ1PRK/7R b - - 0 0");
     //printf("Evaluate: %d\n",evaluate(&newGame.board));
     printBoardE(&newGame.board);
     while(newGame.isRunning){
