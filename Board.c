@@ -782,19 +782,19 @@ ChError doMove(ChessBoard* board, Move* move, History* history){
     if(board->tiles[move->to]!=0x0){
         history->capturedPiece=board->tiles[move->to];
         assert(history->capturedPiece->piece!=king);
-        if(myColor==WHITE){
+        if(myColor==BLACK){
             board->whitePieceScore-=getPieceScore(history->capturedPiece->piece);
-            removePieceZobrist(&board->zobrist,move->to, history->capturedPiece->piece,BLACK);
+            removePieceZobrist(&board->zobrist,move->to, history->capturedPiece->piece,WHITE);
         }else{
             board->blackPieceScore-=getPieceScore(history->capturedPiece->piece);
-            removePieceZobrist(&board->zobrist,move->to, history->capturedPiece->piece,WHITE);
+            removePieceZobrist(&board->zobrist,move->to, history->capturedPiece->piece,BLACK);
         }
+ 
         board->tiles[move->to]=NULL;
         history->capturedPiece->location=NO_LOCATION;
       
     }
-    
-    
+
     removePieceZobrist(&board->zobrist,move->from, board->tiles[move->from]->piece,myColor);
     board->tiles[move->to]=board->tiles[move->from];
     board->tiles[move->from]=NULL;
@@ -821,6 +821,11 @@ ChError doMove(ChessBoard* board, Move* move, History* history){
             removePieceZobrist(&board->zobrist,fromPiece->location, fromPiece->piece, myColor);
             fromPiece->piece=move->promote;
             fromPiece->score=getPieceScore(move->promote);
+            if(myColor==BLACK){
+                board->blackPieceScore+=getPieceScore(move->promote)-100;   
+            }else{
+                board->whitePieceScore+=getPieceScore(move->promote)-100;
+            }
             addPieceZobrist(&board->zobrist,fromPiece->location, fromPiece->piece, myColor);
             break;
         case ENPASSANT:
