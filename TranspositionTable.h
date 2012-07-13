@@ -15,10 +15,17 @@
 #include <assert.h>
 #include "Chengine.h"
 
+
+typedef enum Bound{
+    BOUND_EXACT,
+    BOUND_UPPER,
+    BOUND_LOWER
+}Bound;
+
 ChError initTable(long size);
 u_int64_t getZobristHash(ChessBoard* board);
 
-ChError addKeyToTable(u_int64_t zobrist, int depth, int score, int bound,Move move);
+ChError addKeyToTable(u_int64_t zobrist, int depth, int score, Bound bound,Move move);
 ChError probe(u_int64_t zobrist, int depth, int* alpha, int* beta, int* score, Move* move);
 
 ChError addPieceZobrist(u_int64_t* zobrist,int location,PIECE piece, Color color);

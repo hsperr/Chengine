@@ -1334,20 +1334,26 @@ ChError generateMoves(ChessBoard* board,enum Color color, MoveList* moveList){
     
     return ChError_OK;
 }
+
+typedef struct SortingInfo{
+    ChessBoard* board;
+    int* history;
+}SortingInfo;
+
 int compareMoves(void* b, const void* mv1, const void* mv2){
     
     Move* move1=(Move*)mv1;
     Move* move2=(Move*)mv2;
-    ChessBoard* board =(ChessBoard*)b;
+    SortingInfo* info =(SortingInfo*)b;
     
     int move1Score=0;
     int move2Score=0;
     
-    if(board->tiles[move1->to]!=NULL){
-        move1Score+=getPieceScore(board->tiles[move1->to]->piece)*100;
-        move1Score-=getPieceScore(board->tiles[move1->from]->piece);
+    if(info->board->tiles[move1->to]!=NULL){
+        move1Score+=getPieceScore(info->board->tiles[move1->to]->piece)*10000;
+        move1Score-=getPieceScore(info->board->tiles[move1->from]->piece);
     }else{
-        switch(board->tiles[move1->from]->piece){
+        switch(info->board->tiles[move1->from]->piece){
             case pawn:
                 move1Score+=10;
                 break;
@@ -1368,12 +1374,17 @@ int compareMoves(void* b, const void* mv1, const void* mv2){
                 break;
                 
         }
+        
+        if(move1->promote)
+            move1Score+=10;
+        if(info->history)
+            move1Score+=info->history[move1->from+128*move1->to]*5;
     }
-    if(board->tiles[move2->to]!=NULL){
-        move2Score+=getPieceScore(board->tiles[move2->to]->piece)*100;
-        move2Score-=getPieceScore(board->tiles[move2->from]->piece);
+    if(info->board->tiles[move2->to]!=NULL){
+        move2Score+=getPieceScore(info->board->tiles[move2->to]->piece)*10000;
+        move2Score-=getPieceScore(info->board->tiles[move2->from]->piece);
     }else{
-        switch(board->tiles[move2->from]->piece){
+        switch(info->board->tiles[move2->from]->piece){
             case pawn:
                 move2Score+=10;
                 break;
@@ -1394,6 +1405,11 @@ int compareMoves(void* b, const void* mv1, const void* mv2){
                 break;
                 
         }
+        if(move2->promote)
+            move2Score+=10;
+        
+        if(info->history)
+         move2Score+=info->history[move2->from+128*move2->to]*5;
     }
     
     if(move2Score>move1Score){
@@ -1405,19 +1421,22 @@ int compareMoves(void* b, const void* mv1, const void* mv2){
 }
 
 
-ChError generateSortedMoves(ChessBoard* board,enum Color color, MoveList* moveList){
+ChError generateSortedMoves(ChessBoard* board,enum Color color, MoveList* moveList, int history[][128]){
     ChError hr;
     int nextFree=moveList->nextFree;
     hr=generateMoves(board, color, moveList);
     if(hr)
         return hr;
     
+    SortingInfo info;
+    info.board=board;
+    info.history=history;
 
     Move* move=&moveList->array[nextFree];
-    qsort_r(move, moveList->nextFree-nextFree, sizeof(Move), board, &compareMoves);
+    qsort_r(move, moveList->nextFree-nextFree, sizeof(Move), &info, &compareMoves);
     
-   // printBoardE(board);
-   // printMoveListFromOffset(moveList, nextFree);
+    //printBoardE(board);
+    //printMoveListFromOffset(moveList, nextFree);
     
 
     return hr;
@@ -1426,7 +1445,7 @@ ChError generateSortedMoves(ChessBoard* board,enum Color color, MoveList* moveLi
 ChError generateCaptures(ChessBoard* board,enum Color color, MoveList* moveList){
     ChError hr;
     int nextFree=moveList->nextFree;
-    hr=generateSortedMoves(board, color, moveList);
+    hr=generateSortedMoves(board, color, moveList,NULL);
     if(hr)
         return hr;
 

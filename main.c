@@ -22,11 +22,11 @@ int main (int argc, const char * argv[])
     
     newGame.isRunning=1;
     newGame.aiPlayer[WHITE].depth=0;
-    newGame.aiPlayer[WHITE].timelimit=10000;
-    newGame.aiPlayer[WHITE].isAi=0;
+    newGame.aiPlayer[WHITE].timelimit=400000;
+    newGame.aiPlayer[WHITE].isAi=1;
     
     newGame.aiPlayer[BLACK].depth=0;
-    newGame.aiPlayer[BLACK].timelimit=10000;
+    newGame.aiPlayer[BLACK].timelimit=300000;
     newGame.aiPlayer[BLACK].isAi=0;
     
     if((hr=initBoard(&newGame.board))){
@@ -34,13 +34,14 @@ int main (int argc, const char * argv[])
         printError(hr);
     }
 
-    //readFENString(&newGame.board, "7k/5K2/5P1p/3p4/6P1/3p4/8/8 w - - 0 1");
+    readFENString(&newGame.board, "7k/5K2/5P1p/3p4/6P1/3p4/8/8 w - - 0 1");
     //printf("Evaluate: %d\n",evaluate(&newGame.board));
     printBoardE(&newGame.board);
     while(newGame.isRunning){
             
         if(newGame.aiPlayer[newGame.board.colorToPlay].isAi){
-            hr=doAiMove(&newGame.board, &newGame.aiPlayer[newGame.board.colorToPlay]);
+            //hr=doAiMove(&newGame.board, &newGame.aiPlayer[newGame.board.colorToPlay]);
+            hr=doAi(&newGame.board);
             switch (hr) {
                 case ChError_OK:
                     break;

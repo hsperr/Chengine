@@ -13,6 +13,7 @@
 #include "Board.h"
 
 ChError doAiMove(ChessBoard* board, Properties* aiProperties);
+ChError doAi(ChessBoard* board);
 int evaluate(ChessBoard* board);
 
 #endif

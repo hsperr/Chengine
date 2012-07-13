@@ -12,7 +12,7 @@ typedef struct TableEntry{
     int64_t zobrist; //collision detection
     int depth;    //depth searched to, from this keys position
     int score;    //score found from this position
-    int bound;      //0=exact,1=lowerbound,2=upperbound
+    Bound bound;      //0=exact,1=lowerbound,2=upperbound
     Move move;    //best move for ordering
 //    Move betaCutoff move
 
@@ -188,7 +188,7 @@ ChError setEnPassantZobrist(u_int64_t* zobrist, int oldEnPassant, int newEnPassa
     }
     return ChError_OK;
 }
-ChError addKeyToTable(u_int64_t zobrist, int depth, int score, int bound, Move move){
+ChError addKeyToTable(u_int64_t zobrist, int depth, int score, Bound bound, Move move){
     if(depth==0)
         return ChError_OK;
     
