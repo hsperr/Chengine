@@ -11,9 +11,11 @@
 
 #include "Chengine.h"
 #include "Board.h"
+#include "OpeningBook.h"
+#include "Eval.h"
 
 ChError doAiMove(ChessBoard* board, Properties* aiProperties);
-ChError doAi(ChessBoard* board);
+ChError doAi(ChessBoard* board, Properties* player);
 int evaluate(ChessBoard* board);
 
 #endif

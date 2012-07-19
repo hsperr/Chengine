@@ -51,5 +51,7 @@ void moveToChar(Move* move, char* charArray);
 int compareBoards(ChessBoard* board1, ChessBoard* board2);
 int equalMoves(Move* move1, Move* move2);
 
+ChError getFenString(ChessBoard* board, char* fen);
+
 
 #endif

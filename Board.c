@@ -74,7 +74,7 @@ static inline int SAME_COLUMN(int position1, int position2){return COLUMN(positi
 
 static inline int IS_PROMOTE_ROW(int position,enum Color color) {return (color==WHITE&&ROW(position)==0)||(color==BLACK&&ROW(position)==8);};
 
-static int pieceValues[]={100,300,100000,300,500,900};
+static int pieceValues[]={10,30,1000,30,50,90};
 
 
 
@@ -111,6 +111,137 @@ ChError resetBoard(ChessBoard* board){
     return ChError_OK;
     
 }
+
+ChError getFenString(ChessBoard* board, char* fen){
+    
+    //boardPositions
+    int fenPos=0;
+    int freeCounter=0;
+    for (int pos=0; pos<128; pos++) {
+        if(IS_ON_BOARD(pos)){
+            if(board->tiles[pos]){
+                if(freeCounter>0){
+                    fen[fenPos]=(char)(freeCounter+'0');
+                    fenPos++;
+                    freeCounter=0;
+                }
+                switch(board->tiles[pos]->piece){
+                    case rook:
+                        fen[fenPos]='r';
+                        fenPos++;
+                        break;
+                    case knight:
+                        fen[fenPos]='n';
+                        fenPos++;
+                        break;
+                    case king:
+                        fen[fenPos]='k';
+                        fenPos++;
+                        break;
+                    case queen:
+                        fen[fenPos]='q';
+                        fenPos++;
+                        break;
+                    case bishop:
+                        fen[fenPos]='b';
+                        fenPos++;
+                        break;
+                    case pawn:
+                        fen[fenPos]='p';
+                        fenPos++;
+                        break;
+                    default:
+                        printf("Warning wrong board");
+                        assert(0);
+                        break;
+                }
+                
+                if(board->tiles[pos]->color==WHITE){
+                    fen[fenPos-1]-=32;//convert uppercase
+                }
+            }else{
+                freeCounter++;
+            }
+        }else{
+            if(freeCounter>0){
+                fen[fenPos]=(char)(freeCounter+'0');
+                fenPos++;
+                freeCounter=0;
+            }
+            fen[fenPos]='/';
+            fenPos++;
+            pos+=7;
+        }
+    }
+    
+    fen[fenPos]=' ';
+    fenPos++;
+    
+    fen[fenPos]=board->colorToPlay==WHITE?'w':'b';
+    fenPos++;
+    
+    fen[fenPos]=' ';
+    fenPos++;
+    
+    if(board->castlingRights){
+        if(board->castlingRights&0x8){
+            fen[fenPos]='K';
+            fenPos++;
+        }if(board->castlingRights&0x6){
+            fen[fenPos]='Q';
+            fenPos++;
+        }
+        if(board->castlingRights&0x2){
+            fen[fenPos]='k';
+            fenPos++;
+        }if(board->castlingRights&0x1){
+            fen[fenPos]='q';
+            fenPos++;
+        }
+    }else{
+        fen[fenPos]='-';
+        fenPos++;
+      
+    }
+    
+    fen[fenPos]=' ';
+    fenPos++;
+    
+    if(board->enPassantSquare!=NO_LOCATION){
+        int column=board->enPassantSquare&0xF0;
+        int row=board->enPassantSquare&0x0F;
+        column=column>>4;
+        
+        fen[fenPos]=row+'a';
+        fenPos++;
+        
+        fen[fenPos]=(8-column)+'0';
+        fenPos++;
+    }else{
+        fen[fenPos]='-';
+        fenPos++; 
+    }
+    fen[fenPos]=' ';
+    fenPos++;
+    
+    fen[fenPos]=(char)(board->repetitionMoves+'0');
+    fenPos++;
+    
+    fen[fenPos]=' ';
+    fenPos++;
+    
+    if(board->playedMoves.nextFree%2!=0){
+        fen[fenPos]=(char)((board->playedMoves.nextFree-1)/2+'0');
+        fenPos++;
+    }else{
+        fen[fenPos]=(char)(board->playedMoves.nextFree/2+'0');
+        fenPos++;
+    }
+    fen[fenPos]='\0';
+   
+    return ChError_OK;
+}
+
 
 ChError readFENString(ChessBoard* board, char* fen){    
     int boardIndex=0;
@@ -427,7 +558,7 @@ void printBoardE(ChessBoard* board){
     printf("\n");
 }
 
-ChError getPinnedPiecePositions(ChessBoard* board, enum Color color, Pin* pieceList){
+static ChError getPinnedPiecePositions(ChessBoard* board, enum Color color, Pin* pieceList){
     ChError hr=ChError_OK;
     int position=color==WHITE?board->whiteToSquare[0].location:board->blackToSquare[0].location;
     PieceInfo* attackerPieces=color==WHITE?board->blackToSquare:board->whiteToSquare;
@@ -588,20 +719,20 @@ void generateAttackMap(ChessBoard* board, enum Color attackerColor, int* attackM
         switch(nextPiece.piece){
             case pawn:
                 if(IS_ON_BOARD(nextPiece.location+direction*0x0F))
-                    attackMap[nextPiece.location+direction*0x0F]+=100;
+                    attackMap[nextPiece.location+direction*0x0F]+=1;
                 if(IS_ON_BOARD(nextPiece.location+direction*0x11))
-                    attackMap[nextPiece.location+direction*0x11]+=100;
+                    attackMap[nextPiece.location+direction*0x11]+=1;
                 break;
             case knight:
                 for(int i=0;i<8;i++){
                     if(IS_ON_BOARD(nextPiece.location+knightdeltas[i]))
-                        attackMap[nextPiece.location+knightdeltas[i]]+=300;
+                        attackMap[nextPiece.location+knightdeltas[i]]+=1;
                 }
                 break;
             case king:
                 for(int i=0;i<8;i++){
                     if(IS_ON_BOARD(nextPiece.location+kingdeltas[i]))
-                        attackMap[nextPiece.location+kingdeltas[i]]+=10000;
+                        attackMap[nextPiece.location+kingdeltas[i]]+=1;
                 }
                 break;
             case queen:
@@ -609,7 +740,7 @@ void generateAttackMap(ChessBoard* board, enum Color attackerColor, int* attackM
                     int delta=rookdeltas[i];
                     int nextPosition=nextPiece.location+delta;
                     while(IS_ON_BOARD(nextPosition)){
-                        attackMap[nextPosition]+=900;
+                        attackMap[nextPosition]+=1;
                         if(board->tiles[nextPosition])
                             break;
                         
@@ -621,7 +752,7 @@ void generateAttackMap(ChessBoard* board, enum Color attackerColor, int* attackM
                     int delta=bishopdeltas[i];
                     int nextPosition=nextPiece.location+delta;
                     while(IS_ON_BOARD(nextPosition)){
-                        attackMap[nextPosition]+=900;
+                        attackMap[nextPosition]+=1;
                         if(board->tiles[nextPosition])
                             break;
                         
@@ -635,7 +766,7 @@ void generateAttackMap(ChessBoard* board, enum Color attackerColor, int* attackM
                     int delta=rookdeltas[i];
                     int nextPosition=nextPiece.location+delta;
                     while(IS_ON_BOARD(nextPosition)){
-                        attackMap[nextPosition]+=500;
+                        attackMap[nextPosition]+=1;
                         if(board->tiles[nextPosition])
                             break;
                         
@@ -649,7 +780,7 @@ void generateAttackMap(ChessBoard* board, enum Color attackerColor, int* attackM
                     int delta=bishopdeltas[i];
                     int nextPosition=nextPiece.location+delta;
                     while(IS_ON_BOARD(nextPosition)){
-                        attackMap[nextPosition]+=500;
+                        attackMap[nextPosition]+=1;
                         if(board->tiles[nextPosition])
                             break;
                         
@@ -839,6 +970,7 @@ ChError doMove(ChessBoard* board, Move* move, History* history){
             
             removePieceZobrist(&board->zobrist,board->tiles[H1]->location,rook,myColor);
             addPieceZobrist(&board->zobrist,move->to-0x01,rook,myColor);
+            board->hasCastled|=0x1;
             
             board->tiles[H1]->location=move->to-0x01;
             board->tiles[move->to-0x01]=board->tiles[H1];
@@ -849,6 +981,7 @@ ChError doMove(ChessBoard* board, Move* move, History* history){
             
             removePieceZobrist(&board->zobrist,board->tiles[H8]->location,rook,myColor);
             addPieceZobrist(&board->zobrist,move->to-0x01,rook,myColor);
+             board->hasCastled|=0x2;
             
             board->tiles[H8]->location=move->to-0x01;
             board->tiles[move->to-0x01]=board->tiles[H8];
@@ -860,6 +993,7 @@ ChError doMove(ChessBoard* board, Move* move, History* history){
             
             removePieceZobrist(&board->zobrist,board->tiles[A1]->location,rook,myColor);
             addPieceZobrist(&board->zobrist,move->to+0x01,rook,myColor);
+             board->hasCastled|=0x1;
             
             board->tiles[A1]->location=move->to+0x01;
             board->tiles[move->to+0x01]=board->tiles[A1];
@@ -872,6 +1006,7 @@ ChError doMove(ChessBoard* board, Move* move, History* history){
             
             removePieceZobrist(&board->zobrist,board->tiles[A8]->location,rook,myColor);
             addPieceZobrist(&board->zobrist,move->to+0x01,rook,myColor);
+             board->hasCastled|=0x2;
             
             board->tiles[A8]->location=move->to+0x01;
             board->tiles[move->to+0x01]=board->tiles[A8];
@@ -957,21 +1092,23 @@ ChError undoMove(ChessBoard* board,Move* move, History* history){
             
             board->tiles[H1]=board->tiles[(move->to-0x01)];
             board->tiles[H1]->location=H1;
-            board->tiles[(move->to-0x01)]=NULL;            
+            board->tiles[(move->to-0x01)]=NULL; 
+             board->hasCastled&=0x2;
             break;
         case BKINGCASTLE:
             assert(board->tiles[(move->to-0x01)]->piece==rook);
             
             board->tiles[H8]=board->tiles[(move->to-0x01)];
             board->tiles[H8]->location=H8;
-            board->tiles[(move->to-0x01)]=NULL;            
+            board->tiles[(move->to-0x01)]=NULL;    
+            board->hasCastled&=0x1;
             break;
         case WQUEENCASTLE:
             assert(board->tiles[(move->to+0x01)]->piece==rook);
             board->tiles[A1]=board->tiles[(move->to+0x01)];
             board->tiles[A1]->location=A1;
             board->tiles[(move->to+0x01)]=NULL;
-            
+            board->hasCastled&=0x2;
             break;
         case BQUEENCASTLE:
             assert(board->tiles[(move->to+0x01)]->piece==rook);
@@ -979,6 +1116,7 @@ ChError undoMove(ChessBoard* board,Move* move, History* history){
             board->tiles[A8]=board->tiles[(move->to+0x01)];
             board->tiles[A8]->location=A8;
             board->tiles[(move->to+0x01)]=NULL;
+            board->hasCastled&=0x1;
             break;
             
         default:
@@ -1340,7 +1478,7 @@ typedef struct SortingInfo{
     int* history;
 }SortingInfo;
 
-int compareMoves(void* b, const void* mv1, const void* mv2){
+static int compareMoves(void* b, const void* mv1, const void* mv2){
     
     Move* move1=(Move*)mv1;
     Move* move2=(Move*)mv2;
@@ -1430,7 +1568,7 @@ ChError generateSortedMoves(ChessBoard* board,enum Color color, MoveList* moveLi
     
     SortingInfo info;
     info.board=board;
-    info.history=history;
+    info.history=NULL;
 
     Move* move=&moveList->array[nextFree];
     qsort_r(move, moveList->nextFree-nextFree, sizeof(Move), &info, &compareMoves);

@@ -7,7 +7,7 @@
 //
 
 #include "perft.h"
-long perft_rec(ChessBoard* board, Color sideToMove, int depth, MoveList* list){
+static long perft_rec(ChessBoard* board, Color sideToMove, int depth, MoveList* list){
     if(depth==0)
         return 1;
     

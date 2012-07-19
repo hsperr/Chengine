@@ -7,6 +7,7 @@
 //
 
 #include "Chengine.h"
+#include "OpeningBook.h"
 
 
 
@@ -21,50 +22,53 @@ int main (int argc, const char * argv[])
     initTable(1048576*16);
     
     newGame.isRunning=1;
-    newGame.aiPlayer[WHITE].depth=0;
-    newGame.aiPlayer[WHITE].timelimit=400000;
-    newGame.aiPlayer[WHITE].isAi=1;
     
-    newGame.aiPlayer[BLACK].depth=0;
-    newGame.aiPlayer[BLACK].timelimit=300000;
-    newGame.aiPlayer[BLACK].isAi=0;
+    newGame.Player[WHITE].depth=200;
+    newGame.Player[WHITE].timelimit=40000;
+    newGame.Player[WHITE].isAi=0;
+    newGame.Player[BLACK].useOpeningTable=1;
+    
+    newGame.Player[BLACK].depth=200;
+    newGame.Player[BLACK].timelimit=30000;
+    newGame.Player[BLACK].isAi=1;
+    newGame.Player[BLACK].useOpeningTable=1;
     
     if((hr=initBoard(&newGame.board))){
         printf("After init board:");
         printError(hr);
     }
 
-    readFENString(&newGame.board, "7k/5K2/5P1p/3p4/6P1/3p4/8/8 w - - 0 1");
+    //readFENString(&newGame.board, "6Q1/1k6/8/Q7/8/8/8/7K w - - 0 0");
     //printf("Evaluate: %d\n",evaluate(&newGame.board));
     printBoardE(&newGame.board);
     while(newGame.isRunning){
-            
-        if(newGame.aiPlayer[newGame.board.colorToPlay].isAi){
+        if(newGame.Player[newGame.board.colorToPlay].isAi){
             //hr=doAiMove(&newGame.board, &newGame.aiPlayer[newGame.board.colorToPlay]);
-            hr=doAi(&newGame.board);
+            hr=doAi(&newGame.board, &newGame.Player[newGame.board.colorToPlay]);
             switch (hr) {
                 case ChError_OK:
                     break;
                 case ChError_CheckMate:
                     if(newGame.board.colorToPlay==WHITE){
                         printf("0-1 {Black mates}\n");
-                        newGame.aiPlayer[BLACK].isAi=0;
-                        newGame.aiPlayer[WHITE].isAi=0;
+                        newGame.Player[BLACK].isAi=0;
+                        newGame.Player[WHITE].isAi=0;
                     }else{
                         printf("1-0 {White mates}\n");
-                        newGame.aiPlayer[BLACK].isAi=0;
-                        newGame.aiPlayer[WHITE].isAi=0;
+                        newGame.Player[BLACK].isAi=0;
+                        newGame.Player[WHITE].isAi=0;
                     }
                     break;
                 case ChError_StaleMate:
                         printf("1/2-1/2 {Stalemate}\n");
-                        newGame.aiPlayer[BLACK].isAi=0;
-                        newGame.aiPlayer[WHITE].isAi=0;
+                        newGame.Player[BLACK].isAi=0;
+                        newGame.Player[WHITE].isAi=0;
                     break;
                 case ChError_RepetitionDraw:
                     printf("1/2-1/2 {Repetition Draw}\n");
-                    newGame.aiPlayer[BLACK].isAi=0;
-                    newGame.aiPlayer[WHITE].isAi=0;
+                    newGame.Player[BLACK].isAi=0;
+                    newGame.Player[WHITE].isAi=0;
+                   
                     break;
 
                 default:
@@ -79,7 +83,9 @@ int main (int argc, const char * argv[])
 
     
     //TESTING
-  
+    //test openingbook
+    
+    //assert(isLegal(&newGame.board, &openingMove));
      /*
     printf("Perfting\n");
     readFENString(&newGame.board, "3r1k2/4npp1/1ppr3p/p6P/P2PPPP1/1NR5/5K2/2R5 w - - 0 0");

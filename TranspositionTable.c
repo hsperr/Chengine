@@ -32,7 +32,7 @@ long* repetitionTable;
 
 
 ChError incrementRepetitionTable(u_int64_t* zobrist){
-     u_int64_t index=*(zobrist)%tableSize;
+    u_int64_t index=*(zobrist)%tableSize;
     repetitionTable[index]++;
     return ChError_OK;
 }
@@ -42,12 +42,12 @@ ChError decrementRepetitionTable(u_int64_t* zobrist){
     return ChError_OK;
 }
 long probeRepetitionTable(u_int64_t* zobrist){
-    long index=*(zobrist)%tableSize;
+    u_int64_t index=*(zobrist)%tableSize;
     
     return repetitionTable[index];
 }
 
-u_int64_t rand64(void)
+static u_int64_t rand64(void)
 {
     return rand() ^ ((u_int64_t)rand() << 15) ^ ((u_int64_t)rand() << 30) ^
     ((u_int64_t)rand() << 45) ^ ((u_int64_t)rand() << 60);
@@ -96,7 +96,7 @@ ChError clearTable(void){
     return ChError_OK;
 }
 
-int locationToIndex(int location){
+static int locationToIndex(int location){
     return location-(((location&0xF0)>>4)*8);
 }
 u_int64_t getZobristHash(ChessBoard* board){

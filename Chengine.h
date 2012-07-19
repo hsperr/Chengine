@@ -82,11 +82,11 @@ typedef struct MoveList{
     int alloc;
     Move* array;
 }MoveList;
-//TODO make player struct which saves time and is ai and stuff for each player /otime /time
 typedef struct Properties{
     int depth;
     int timelimit;
     int isAi;
+    char useOpeningTable;
 }Properties;
 
 enum {
@@ -124,13 +124,14 @@ typedef struct ChessBoard{
     int enPassantSquare;
     int repetitionMoves;
     int castlingRights;
+    char hasCastled; //0 nobody 1 white 2 black 3 both
     u_int64_t zobrist;
 }ChessBoard;
 
 typedef struct Game{
     ChessBoard board;
     int isRunning;
-    Properties aiPlayer[2];
+    Properties Player[2];
 }Game;
 
 ChError addToMoveList(MoveList* moveList, Move* move);

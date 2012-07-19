@@ -23,17 +23,17 @@ void checkForInput(Game* game){
                 printf("Error accepting %s please fix that\n",input);
                 exit(-1);
             }else if(strncmp(input,"protover",8)==0){
-                printf("feature playother=1\n");
+                printf("feature playother=0\n");
                 printf("feature sigterm=0\n");
                 printf("feature sigint=0\n");
                 printf("feature analyze=0\n");
                 printf("feature colors=0\n");
                 printf("feature myname=\"Chengine\"\n");
-                printf("feature reuse=1\n");
+                printf("feature reuse=0\n");
                 printf("feature ping=1\n");
                 printf("feature san=0\n");
                 printf("feature debug=1\n");
-                printf("feature time=0\n");
+                printf("feature time=1\n");
                 printf("feature variants=\"normal\"\n");
                 printf("feature done=1\n");
                 //comes immidiately after xboard command if version 2 or above
@@ -46,6 +46,16 @@ void checkForInput(Game* game){
                 //do not ponder even if pondering is on
             }else if(strncmp(input,"new",3)==0){
                 resetBoard(&game->board);
+                
+                game->Player[WHITE].depth=200;
+                game->Player[WHITE].timelimit=30000;
+                game->Player[WHITE].isAi=0;
+                game->Player[WHITE].useOpeningTable=1;
+                
+                game->Player[BLACK].depth=200;
+                game->Player[BLACK].timelimit=30000;
+                game->Player[BLACK].isAi=1;
+                game->Player[BLACK].useOpeningTable=1;
                 //reset board white to move engine is black, reset clocks
                 //do not ponder even if pondering is on
             }else if(strncmp(input,"variant",6)==0){
@@ -59,45 +69,64 @@ void checkForInput(Game* game){
             }else if(strncmp(input,"force",5)==0){
                 //engine plays neither color, stop clocks, 
                 //engine just checks that moves coming are legal and proper color is moving
-                game->aiPlayer[BLACK].isAi=0;
-                game->aiPlayer[WHITE].isAi=0;
+                game->Player[BLACK].isAi=0;
+                game->Player[WHITE].isAi=0;
             }else if(strncmp(input,"go",2)==0){
-                game->aiPlayer[game->board.colorToPlay].isAi=1;
+                game->Player[game->board.colorToPlay].isAi=1;
                 return;
                 //leave force mode, set engine to play color that is on move
                 //start thinking and clock
             }else if(strncmp(input,"white",5)==0){
                 //leave force mode and let engine play other color
                 //begin pondering if enabled
-                game->board.colorToPlay=WHITE;
-                //state->isPlayerAi[WHITE]=false;
-                //state->isPlayerAi[BLACK]=true;
+               /* game->board.colorToPlay=WHITE;
+                Properties player=game->Player[WHITE];
+                game->Player[WHITE]=game->Player[BLACK];
+                game->Player[BLACK]=player;
+                game->Player[BLACK].isAi=1;*/
             }else if(strncmp(input,"black",5)==0){
                 //leave force mode and let engine play other color
                 //begin pondering if enabled
-                game->board.colorToPlay=BLACK;
+/*                game->board.colorToPlay=BLACK;
+                Properties player=game->Player[WHITE];
+                game->Player[WHITE]=game->Player[BLACK];
+                game->Player[BLACK]=player;
+                game->Player[WHITE].isAi=1;
                 //state->isPlayerAi[WHITE]=true;
-                //state->isPlayerAi[BLACK]=false;
+                //state->isPlayerAi[BLACK]=false;*/
             }else if(strncmp(input,"playother",9)==0){
                 //leave force mode and let engine play other color
                 //begin pondering if enabled
-                game->aiPlayer[game->board.colorToPlay==WHITE?BLACK:WHITE].isAi=1;
+                //game->Player[game->board.colorToPlay==WHITE?BLACK:WHITE].isAi=1;
+/*                Properties player=game->Player[WHITE];
+                game->Player[WHITE]=game->Player[BLACK];
+                game->Player[BLACK]=player;*/
             }else if(strncmp(input,"level",5)==0){
                 // set time controls level MPS BASE INC
             }else if(strncmp(input,"st",2)==0){
                 // set time controls st TIME
-                game->aiPlayer[WHITE].timelimit=(int)(input[3]-'0');
-                game->aiPlayer[BLACK].timelimit=(int)(input[3]-'0');
+                game->Player[WHITE].timelimit=(int)(input[3]-'0');
+                game->Player[BLACK].timelimit=(int)(input[3]-'0');
             }else if(strncmp(input,"sd",2)==0){
-                game->aiPlayer[WHITE].depth=(int)(input[3]-'0');
-                game->aiPlayer[BLACK].depth=(int)(input[3]-'0');
+                game->Player[WHITE].depth=(int)(input[3]-'0');
+                game->Player[BLACK].depth=(int)(input[3]-'0');
             }else if(strncmp(input,"nps",3)==0){
                 /*The engine should not use wall-clock time to make its timing decisions, but an own internal time measure based on the number of nodes it has searched (and will report as "thinking output", see section 10), converted to seconds through dividing by the given NODE_RATE. Example: after receiving the commands "st 8" and "nps 10000", the engine should never use more that 80,000 nodes in the search for any move. In this mode, the engine should report user CPU time used (in its thinking output), rather than wall-clock time. This even holds if NODE_RATE is given as 0, but in that case it should also use the user CPU time for its timing decisions. The effect of an "nps" command should persist until the next "new" command.*/
                 printf("Error (unkown command): nps\n");
             }else if(strncmp(input,"time",4)==0){
                 // set a clock that belongs to the engine, even if color changes in 1/1000 sec
+                if(game->Player[WHITE].isAi==1){
+                    game->Player[WHITE].timelimit=atoi(&input[5]);
+                }else{
+                    game->Player[BLACK].timelimit=atoi(&input[5]);
+                }
             }else if(strncmp(input,"otim",2)==0){
                 // set clock that belongs to the opponent, even is color changes
+                if(game->Player[WHITE].isAi==1){
+                    game->Player[BLACK].timelimit=atoi(&input[5]);
+                }else{
+                    game->Player[WHITE].timelimit=atoi(&input[5]);
+                }
             }else if(strncmp(input,"usermove",8)==0){
                 // xboard version2 feature can enable form
                 // usermove MOVE
@@ -156,7 +185,7 @@ void checkForInput(Game* game){
                                 if(input[4]=='q')
                                     move.promote=queen;
                                 else if(input[4]=='r')
-                                    move.promote=knight;
+                                    move.promote=rook;
                                 else if(input[4]=='b')
                                     move.promote=bishop;
                                 else if(input[4]=='n')
