@@ -16,6 +16,6 @@
 
 ChError doAiMove(ChessBoard* board, Properties* aiProperties);
 ChError doAi(ChessBoard* board, Properties* player);
-int evaluate(ChessBoard* board);
+
 
 #endif

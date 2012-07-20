@@ -74,7 +74,7 @@ static inline int SAME_COLUMN(int position1, int position2){return COLUMN(positi
 
 static inline int IS_PROMOTE_ROW(int position,enum Color color) {return (color==WHITE&&ROW(position)==0)||(color==BLACK&&ROW(position)==8);};
 
-static int pieceValues[]={10,30,1000,30,50,90};
+static int pieceValues[]={100,300,10000,300,500,900};
 
 
 
@@ -715,24 +715,27 @@ void generateAttackMap(ChessBoard* board, enum Color attackerColor, int* attackM
     PieceInfo* attackerPieces=attackerColor==WHITE?board->whiteToSquare:board->blackToSquare;
     
     for(int j=0;j<16;j++){
+        if(attackerPieces[j].location==NO_LOCATION)
+            continue;
+        
         PieceInfo nextPiece=attackerPieces[j];        
         switch(nextPiece.piece){
             case pawn:
                 if(IS_ON_BOARD(nextPiece.location+direction*0x0F))
-                    attackMap[nextPiece.location+direction*0x0F]+=1;
+                    attackMap[nextPiece.location+direction*0x0F]=1;
                 if(IS_ON_BOARD(nextPiece.location+direction*0x11))
-                    attackMap[nextPiece.location+direction*0x11]+=1;
+                    attackMap[nextPiece.location+direction*0x11]=1;
                 break;
             case knight:
                 for(int i=0;i<8;i++){
                     if(IS_ON_BOARD(nextPiece.location+knightdeltas[i]))
-                        attackMap[nextPiece.location+knightdeltas[i]]+=1;
+                        attackMap[nextPiece.location+knightdeltas[i]]=1;
                 }
                 break;
             case king:
                 for(int i=0;i<8;i++){
                     if(IS_ON_BOARD(nextPiece.location+kingdeltas[i]))
-                        attackMap[nextPiece.location+kingdeltas[i]]+=1;
+                        attackMap[nextPiece.location+kingdeltas[i]]=1;
                 }
                 break;
             case queen:
@@ -740,7 +743,7 @@ void generateAttackMap(ChessBoard* board, enum Color attackerColor, int* attackM
                     int delta=rookdeltas[i];
                     int nextPosition=nextPiece.location+delta;
                     while(IS_ON_BOARD(nextPosition)){
-                        attackMap[nextPosition]+=1;
+                        attackMap[nextPosition]=1;
                         if(board->tiles[nextPosition])
                             break;
                         
@@ -752,7 +755,7 @@ void generateAttackMap(ChessBoard* board, enum Color attackerColor, int* attackM
                     int delta=bishopdeltas[i];
                     int nextPosition=nextPiece.location+delta;
                     while(IS_ON_BOARD(nextPosition)){
-                        attackMap[nextPosition]+=1;
+                        attackMap[nextPosition]=1;
                         if(board->tiles[nextPosition])
                             break;
                         
@@ -766,7 +769,7 @@ void generateAttackMap(ChessBoard* board, enum Color attackerColor, int* attackM
                     int delta=rookdeltas[i];
                     int nextPosition=nextPiece.location+delta;
                     while(IS_ON_BOARD(nextPosition)){
-                        attackMap[nextPosition]+=1;
+                        attackMap[nextPosition]=1;
                         if(board->tiles[nextPosition])
                             break;
                         
@@ -780,7 +783,7 @@ void generateAttackMap(ChessBoard* board, enum Color attackerColor, int* attackM
                     int delta=bishopdeltas[i];
                     int nextPosition=nextPiece.location+delta;
                     while(IS_ON_BOARD(nextPosition)){
-                        attackMap[nextPosition]+=1;
+                        attackMap[nextPosition]=1;
                         if(board->tiles[nextPosition])
                             break;
                         
@@ -790,7 +793,7 @@ void generateAttackMap(ChessBoard* board, enum Color attackerColor, int* attackM
                 }
                 break;
             default:
-                printf("Error no default case in create attack map");
+                printf("Error no default case in create attack map\n");
                 break;
         }
     }

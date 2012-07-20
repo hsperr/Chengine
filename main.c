@@ -24,12 +24,12 @@ int main (int argc, const char * argv[])
     newGame.isRunning=1;
     
     newGame.Player[WHITE].depth=200;
-    newGame.Player[WHITE].timelimit=40000;
+    newGame.Player[WHITE].timelimit=40000000;
     newGame.Player[WHITE].isAi=0;
-    newGame.Player[BLACK].useOpeningTable=1;
+    newGame.Player[WHITE].useOpeningTable=1;
     
     newGame.Player[BLACK].depth=200;
-    newGame.Player[BLACK].timelimit=30000;
+    newGame.Player[BLACK].timelimit=30000000;
     newGame.Player[BLACK].isAi=1;
     newGame.Player[BLACK].useOpeningTable=1;
     
@@ -38,7 +38,7 @@ int main (int argc, const char * argv[])
         printError(hr);
     }
 
-    //readFENString(&newGame.board, "6Q1/1k6/8/Q7/8/8/8/7K w - - 0 0");
+    readFENString(&newGame.board, "r3r1k1/ppqb1ppp/8/4p1NQ/8/2P5/PP3PPP/R3R1K1 b -  0 0");
     //printf("Evaluate: %d\n",evaluate(&newGame.board));
     printBoardE(&newGame.board);
     while(newGame.isRunning){

@@ -13,5 +13,5 @@
 #include "Board.h"
 
 int EvaluateComplex(ChessBoard* board);
-
+int evaluate(ChessBoard* board);
 #endif

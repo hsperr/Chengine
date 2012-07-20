@@ -155,6 +155,19 @@ int centralization[128]={ 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 
 const int NO_LOCATION=-5;
 
+int evaluate(ChessBoard* board){
+    int score=0;
+    if(board->colorToPlay==WHITE)
+        score=board->whitePieceScore-board->blackPieceScore;
+    else
+        score=board->blackPieceScore-board->whitePieceScore;
+    
+    
+    
+    return score;
+    
+}
+
 int EvaluateBishops(ChessBoard* board,PieceInfo* bishopsArray, Color color){
     int score=0;
     
@@ -184,8 +197,6 @@ int EvaluateComplex(ChessBoard* board){
     int whiteMajors=0;
     int blackPawnCount=0;
     int blackMajors=0;
-    PieceInfo whitePawns[8]={0};
-    PieceInfo blackPawns[8]={0};
     
     
     
@@ -196,7 +207,6 @@ int EvaluateComplex(ChessBoard* board){
         for(int i=0;i<16;i++){
             if(board->whiteToSquare[i].location!=NO_LOCATION){
                 if(board->whiteToSquare[i].piece==pawn){
-                    whitePawns[whitePawnCount]=board->whiteToSquare[i];
                     wScore+=pval[WHITE][board->whiteToSquare[i].location];
                     whitePawnCount++;
                 }else{
@@ -227,7 +237,6 @@ int EvaluateComplex(ChessBoard* board){
             }
             if(board->blackToSquare[i].location!=NO_LOCATION){
                 if(board->blackToSquare[i].piece==pawn){
-                    blackPawns[blackPawnCount]=board->blackToSquare[i];
                     bScore+=pval[BLACK][board->blackToSquare[i].location];
                     blackPawnCount++;
                 }else{
@@ -260,11 +269,11 @@ int EvaluateComplex(ChessBoard* board){
         wScore+=20*board->hasCastled&0x1;
         bScore+=20*(board->hasCastled&0x2>>1);
         
-        int attackMap[128]={0};
-        int battackMap[128]={0};
+        int attackMap[127]={0};
+        int battackMap[127]={0};
         generateAttackMap(board, WHITE, attackMap);
         generateAttackMap(board, BLACK, battackMap);
-        for(int i=0;i<128;i++){
+        for(int i=0;i<127;i++){
             wScore+=attackMap[i];
             bScore+=battackMap[i];
         }
@@ -275,18 +284,18 @@ int EvaluateComplex(ChessBoard* board){
         major=max(min(major,8),0);
         minor=max(min(minor,8),0);
         
-        wScore+=imbalance[major][minor];
-        bScore-=imbalance[major][minor];
+        //wScore+=imbalance[major][minor];
+       // bScore-=imbalance[major][minor];
         
         wScore+=board->whitePieceScore;
         bScore+=board->blackPieceScore;
         
         if(board->colorToPlay==WHITE){
             wScore+=5;
-            return wScore-bScore;
+            return (wScore-bScore);
         }else{
             bScore+=5;
-            return bScore-wScore;
+            return (bScore-wScore);
         }
         
         
