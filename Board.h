@@ -53,5 +53,9 @@ int equalMoves(Move* move1, Move* move2);
 
 ChError getFenString(ChessBoard* board, char* fen);
 
+int rank(int index); 
+int boardFile(int index);
+int distance(int squareA, int squareB);
+
 
 #endif

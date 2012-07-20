@@ -26,25 +26,145 @@ u_int64_t enPassant[8];
 
 
 TableEntry* hashTable;
-long tableSize=0;
+long hashTableSize=0;
 
-long* repetitionTable;
+
+typedef struct RepEntry{
+    u_int64_t zobrist;
+    int count;
+}RepEntry;
+
+RepEntry* repetitionTable;
+long repetitionTableSize=0;
+
+typedef struct EvalEntry{
+    u_int64_t zobrist;
+    int count;
+}EvalEntry;
+
+EvalEntry* evalTable;
+long evalTableSize=0;
+
+ChError initEvalTable(long size){
+    evalTableSize=size;
+    
+    evalTable=malloc(size*sizeof(EvalEntry));
+    if(!evalTable)
+        return ChError_Resources;
+    memset(repetitionTable,0,sizeof(EvalEntry)*evalTableSize);
+    
+    return ChError_OK;
+
+}
+ChError clearEvalTable(){
+    memset(repetitionTable,0,sizeof(RepEntry)*repetitionTableSize);
+    return ChError_OK;
+}
+
+ChError probeEvalTable(u_int64_t* zobrist, int* eval){
+    u_int64_t index=*(zobrist)%evalTableSize;
+   /* char wrappedaround=0;
+    while(evalTable[index].zobrist!=*zobrist&&
+          evalTable[index].zobrist!=0){
+        index++;
+        if(index>=repetitionTableSize){
+            if(!wrappedaround){
+                index=0;
+                wrappedaround=1;
+            }else{
+                return ChError_NotInTable;                
+            }
+        }
+    }*/
+    if(evalTable[index].zobrist!=*zobrist){
+        return ChError_NotInTable;
+    }else{
+        *eval=evalTable[index].count;
+    }
+    return ChError_OK;
+    
+}
+
+ChError addToEvalTable(u_int64_t* zobrist, int eval){
+    u_int64_t index=*(zobrist)%evalTableSize;
+   /* char wrappedaround=0;
+    while(evalTable[index].zobrist!=*zobrist&&
+          evalTable[index].zobrist!=0){
+        index++;
+        if(index>=repetitionTableSize){
+            if(!wrappedaround){
+                index=0;
+                wrappedaround=1;
+            }else{
+                clearEvalTable();
+                return addToEvalTable(zobrist,eval);
+                
+            }
+        }
+    }*/
+    
+    evalTable[index].zobrist=*zobrist;
+    evalTable[index].count=eval;
+    return ChError_OK;
+    
+}
 
 
 ChError incrementRepetitionTable(u_int64_t* zobrist){
-    u_int64_t index=*(zobrist)%tableSize;
-    repetitionTable[index]++;
+    u_int64_t index=*(zobrist)%repetitionTableSize;
+    RepEntry entry=repetitionTable[index];
+    while(entry.zobrist!=*zobrist&&
+          entry.zobrist!=0){
+        index++;
+        if(index>=repetitionTableSize)
+            index=0;
+        
+        entry=repetitionTable[index];
+    }
+
+        
+    if(repetitionTable[index].zobrist==*zobrist){
+        repetitionTable[index].count++;
+    }else{
+        repetitionTable[index].zobrist=*zobrist;
+        repetitionTable[index].count++;
+    }
     return ChError_OK;
 }
 ChError decrementRepetitionTable(u_int64_t* zobrist){
-    u_int64_t index=*(zobrist)%tableSize;
-    repetitionTable[index]--;
+    u_int64_t index=*(zobrist)%repetitionTableSize;
+    while(repetitionTable[index].zobrist!=*zobrist&&
+          repetitionTable[index].zobrist!=0){
+        index++;
+        if(index>=repetitionTableSize)
+            index=0;
+    }
+    
+    assert(repetitionTable[index].zobrist!=0);
+        repetitionTable[index].count--;
+    if(repetitionTable[index].count<=0){
+        repetitionTable[index].zobrist=0;
+    }
+    
     return ChError_OK;
 }
-long probeRepetitionTable(u_int64_t* zobrist){
-    u_int64_t index=*(zobrist)%tableSize;
+int probeRepetitionTable(u_int64_t* zobrist){
+    u_int64_t index=*(zobrist)%repetitionTableSize;
+    RepEntry entry=repetitionTable[index];
+    while(entry.zobrist!=*zobrist&&
+          entry.zobrist!=0){
+        index++;
+        if(index>=repetitionTableSize)
+            index=0;
+        
+        entry=repetitionTable[index];
+    }
     
-    return repetitionTable[index];
+    return repetitionTable[index].count;
+}
+
+void clearRepetitionTable(){
+    memset(repetitionTable,0,sizeof(RepEntry)*repetitionTableSize);
 }
 
 static u_int64_t rand64(void)
@@ -53,8 +173,18 @@ static u_int64_t rand64(void)
     ((u_int64_t)rand() << 45) ^ ((u_int64_t)rand() << 60);
 }
 
-ChError initTable(long size){
-    tableSize=size;
+ChError initRepetitionTable(long size){
+    repetitionTableSize=size;
+    repetitionTable=malloc(size*sizeof(RepEntry));
+    if(!repetitionTable)
+        return ChError_Resources;
+    memset(repetitionTable,0,sizeof(RepEntry)*repetitionTableSize);
+    
+    return ChError_OK;
+}
+
+ChError initHashTable(long sizeInMb){
+    hashTableSize=sizeInMb;
     srand(17L);
     
      BLACKTOPLAY=rand64();
@@ -75,23 +205,19 @@ ChError initTable(long size){
         enPassant[i]=rand64();
     }
     
-    hashTable=malloc(size*sizeof(TableEntry));
+    hashTable=malloc(hashTableSize*sizeof(TableEntry));
     if(!hashTable)
         return ChError_Resources;
     
-    repetitionTable=malloc(size*sizeof(long));
-    if(!repetitionTable)
-        return ChError_Resources;
+    memset(hashTable,0,sizeof(TableEntry)*hashTableSize);
     
-    memset(hashTable,0,sizeof(TableEntry)*tableSize);
-    memset(repetitionTable,0,sizeof(long)*tableSize);
     
     return ChError_OK;
 
 }
-ChError clearTable(void){
+ChError clearHashTable(void){
     
-    memset(hashTable, 0, sizeof(TableEntry)*tableSize);
+    memset(hashTable, 0, sizeof(TableEntry)*hashTableSize);
     
     return ChError_OK;
 }
@@ -130,7 +256,7 @@ ChError probe(u_int64_t zobrist, int depth, int* alpha, int* beta, int* score, M
     if(depth==0)
         return ChError_NotInTable;
     
-    long index=zobrist%tableSize;
+    long index=zobrist%hashTableSize;
     
     TableEntry* entry=&hashTable[index];
     
@@ -192,7 +318,7 @@ ChError addKeyToTable(u_int64_t zobrist, int depth, int score, Bound bound, Move
     if(depth==0)
         return ChError_OK;
     
-    u_int64_t index=zobrist%tableSize;
+    u_int64_t index=zobrist%hashTableSize;
 
     TableEntry* entry=&hashTable[index];
     
@@ -213,4 +339,7 @@ void freeTable(){
     
     if(repetitionTable)
         free(repetitionTable);
+    
+    if(evalTable)
+        free(evalTable);
 }

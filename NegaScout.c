@@ -41,6 +41,7 @@ int centerBlackValue[]={1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,
  1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0}
  */
 
+int cutOff[10];
 
 typedef struct AiStatistics{
     int allMovesCalculated;
@@ -60,7 +61,7 @@ const char useHashTables=1;
 const char usePVS=1;
 const char useNullMoves=1;
 const char useAspiration=1;
-const char useOpeningTable=0;
+const char useOpeningTable=1;
 const char useComplexEvaluation=1;
 
 const int ASPIRATION_SIZE=30;
@@ -198,7 +199,7 @@ static int NegaScoutRoot(int alpha, int beta, int depth, int allowNull, SearchIn
             int temp=info->board->enPassantSquare;
             info->board->enPassantSquare=-5;
             
-            int eval =0;
+            int eval = 0;
             eval=-NegaScoutRoot(-beta, -beta+1, depth-1-2, 0, info);
             
             info->board->colorToPlay=info->board->colorToPlay==WHITE?BLACK:WHITE;
@@ -288,6 +289,7 @@ static int NegaScoutRoot(int alpha, int beta, int depth, int allowNull, SearchIn
             if(alpha>=beta&&useAlphaBeta){
                 info->cutOffs++;
                 bound=BOUND_UPPER;
+               // cutOff[depth]++;
                 break;
             }
         
@@ -350,7 +352,7 @@ ChError doAi(ChessBoard* board, Properties* player){
 
     }
     //NO OPENINGTABLE MOVE FOUND DO NORMAL SEARCH
-    clearTable();
+    clearHashTable();
     int alpha=INIT_ALPHA;
     int beta = INIT_BETA;
     ChError hr=ChError_OK;
@@ -411,7 +413,11 @@ ChError doAi(ChessBoard* board, Properties* player){
             alpha=INIT_ALPHA;
             beta=INIT_BETA;            
         }
-    
+        
+        /*for(int a=0;a<10;a++){
+            printf("%d ",cutOff[a]);
+        }
+        printf("\n");*/
         
         /***********
         *STATISTICS
@@ -420,7 +426,7 @@ ChError doAi(ChessBoard* board, Properties* player){
         
         //ply score time nodes pv
         printf("%2d %4d %.3f %6d ",depth,info.bestMoveScores[depth],((float)(clock()-startTime)/CLOCKS_PER_SEC),info.movesPerIterationCalculated+info.quietNodes);
-        for(int i=depth;i>=1;i--){
+        for(int i=depth;i>=max(1,depth-20);i--){
             moveToChar(&info.bestMoves[i], charMove);
             printf("%s ",charMove);
         }
@@ -434,7 +440,7 @@ ChError doAi(ChessBoard* board, Properties* player){
         info.quietNodes=0;
         info.movesPerIterationCalculated=0; 
         
-        if((float)(clock()-startTime)/CLOCKS_PER_SEC*2>timeForThisMove || bestScore>=MATE_SCORE){
+        if((float)(clock()-startTime)/CLOCKS_PER_SEC*2>timeForThisMove ){
             depth++;
             break;
         }
@@ -443,21 +449,28 @@ ChError doAi(ChessBoard* board, Properties* player){
     
     
     long rep=probeRepetitionTable(&board->zobrist);
-    if(rep>=3||board->repetitionMoves>=50){
+    if((rep>=3||board->repetitionMoves>=50)&&info.bestMoveScores<0){
         hr=ChError_RepetitionDraw;
         return hr;
     }
         
-    if(!stopSearch)
+    if(!stopSearch){
         moveToChar(&info.bestMoves[depth-1], charMove);
-    else
+#ifdef DEBUG
+        assert(isLegal(board,&info.bestMoves[depth-1]));
+#endif
+    }else{
         moveToChar(&lastSerachesBestMove, charMove);
+#ifdef DEBUG
+        assert(isLegal(board,&lastSerachesBestMove ));
+#endif
+    }
     
     printf("#Found best move %s in %f sec out of %d nodes having %f nodes/sec.\n",charMove,((float)(clock()-time)/CLOCKS_PER_SEC),info.allMovesCalculated,(info.allMovesCalculated+info.quietNodes)/((float)(clock()-time)/CLOCKS_PER_SEC));
     printf("#This run i had %d tableLookups and %d cutoffs and %d quiet nodes.\n",info.tableLookUpsFound,info.cutOffs,info.quietNodes);
     
     printf("move %s\n",charMove);
-    
+
     if(!stopSearch)
         doMove(board, &info.bestMoves[depth-1],&h);
     else

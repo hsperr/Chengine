@@ -19,13 +19,16 @@ int main (int argc, const char * argv[])
     
     Game newGame;
     ChError hr;
-    initTable(1048576*16);
+    initHashTable(1048576*16);
+    initRepetitionTable(1048576);
+    initEvalTable(1048576*4);
+    
     
     newGame.isRunning=1;
     
     newGame.Player[WHITE].depth=200;
-    newGame.Player[WHITE].timelimit=40000000;
-    newGame.Player[WHITE].isAi=0;
+    newGame.Player[WHITE].timelimit=4000000;
+    newGame.Player[WHITE].isAi=1;
     newGame.Player[WHITE].useOpeningTable=1;
     
     newGame.Player[BLACK].depth=200;
@@ -38,12 +41,11 @@ int main (int argc, const char * argv[])
         printError(hr);
     }
 
-    readFENString(&newGame.board, "r3r1k1/ppqb1ppp/8/4p1NQ/8/2P5/PP3PPP/R3R1K1 b -  0 0");
+    readFENString(&newGame.board, "2brr1k1/ppq2ppp/2pb1n2/8/3NP3/2P2P2/P1Q2BPP/1R1R1BK1 w - - 0 0");
     //printf("Evaluate: %d\n",evaluate(&newGame.board));
     printBoardE(&newGame.board);
     while(newGame.isRunning){
         if(newGame.Player[newGame.board.colorToPlay].isAi){
-            //hr=doAiMove(&newGame.board, &newGame.aiPlayer[newGame.board.colorToPlay]);
             hr=doAi(&newGame.board, &newGame.Player[newGame.board.colorToPlay]);
             switch (hr) {
                 case ChError_OK:
@@ -84,6 +86,7 @@ int main (int argc, const char * argv[])
     
     //TESTING
     //test openingbook
+
     
     //assert(isLegal(&newGame.board, &openingMove));
      /*

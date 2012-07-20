@@ -7,6 +7,7 @@
 //
 
 #include "Board.h"
+#include "TranspositionTable.h"
 #include <assert.h>
 
 
@@ -104,6 +105,7 @@ ChError resetBoard(ChessBoard* board){
     board->playedMoves.alloc=0;
     board->playedMoves.nextFree=0;
     board->playedMoves.array=NULL;
+    
     
     readFENString(board,"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
     
@@ -242,14 +244,46 @@ ChError getFenString(ChessBoard* board, char* fen){
     return ChError_OK;
 }
 
+static void getGamePhase(ChessBoard* board){
+    board->phase=Opening;
+
+    int materialCount=0;
+    //no pawns
+    for(int i=1; i<6;i++){
+        materialCount+=board->playerScores[WHITE].pieceCounts[i];
+        materialCount+=board->playerScores[BLACK].pieceCounts[i];
+        //weigth queens and rooks
+        //rooks
+        if(i==4){
+            materialCount+=board->playerScores[WHITE].pieceCounts[i];
+            materialCount+=board->playerScores[BLACK].pieceCounts[i]; 
+        }
+        //queens
+        if(i==5){
+            materialCount+=board->playerScores[WHITE].pieceCounts[i];
+            materialCount+=board->playerScores[BLACK].pieceCounts[i];
+            materialCount+=board->playerScores[WHITE].pieceCounts[i];
+            materialCount+=board->playerScores[BLACK].pieceCounts[i];
+        }
+            
+    }
+    
+    if(materialCount<=8) board->phase=EndGame;
+    else if(materialCount>=20) board->phase=Opening;
+    else board->phase=MiddleGame;
+    
+}
 
 ChError readFENString(ChessBoard* board, char* fen){    
     int boardIndex=0;
     int stringIndex=0;
     ChError hr;
     
-    board->blackPieceScore=0;
-    board->whitePieceScore=0;
+    //reset piece scores
+    clearRepetitionTable();
+    clearHashTable();
+    memset(&board->playerScores, 0, sizeof(PieceScores)*2);
+    
     //reset piece index
     for(int i=0;i<16;i++){
         board->whiteToSquare[i].piece=NO_PIECE;
@@ -457,20 +491,26 @@ ChError readFENString(ChessBoard* board, char* fen){
     
     board->zobrist=getZobristHash(board);
     
+    getGamePhase(board);
+    
     return ChError_OK;
 }
+
+
+
 int getPieceScore(PIECE piece){
     return pieceValues[piece];
 }
 
 ChError insertPiece(ChessBoard* board, PIECE pieceType, Color color, int location){
     PieceInfo* pieceToSquareArray;
+    board->playerScores[color].totalScores+=getPieceScore(pieceType);
+    board->playerScores[color].pieceCounts[pieceType]++;
+    
     if(color==WHITE){
         pieceToSquareArray=board->whiteToSquare;
-        board->whitePieceScore+=getPieceScore(pieceType);
     }else{
         pieceToSquareArray=board->blackToSquare;
-        board->blackPieceScore+=getPieceScore(pieceType);
     }
     
     if(pieceType==king){
@@ -702,7 +742,26 @@ static ChError getPinnedPiecePositions(ChessBoard* board, enum Color color, Pin*
     //printf("Pinned pieces %d\n",pinnedPieces);
     return hr;
 }
-
+// attack map will use bits as following 
+/*
+ 1:pawn attack
+ 2:pawn attack
+ 3:queen
+ 4:queen
+ 5:queen
+ 6:knight
+ 7:knight
+ 8:knight
+ 9:bishop
+ 10:bishop
+ 11:bishop
+ 12:rook
+ 13:rook
+ 14:rook
+ 15:king
+ 
+ 
+ */
 void generateAttackMap(ChessBoard* board, enum Color attackerColor, int* attackMap){
     for(int i=0;i<127;i++){
         attackMap[i]=0;
@@ -722,20 +781,20 @@ void generateAttackMap(ChessBoard* board, enum Color attackerColor, int* attackM
         switch(nextPiece.piece){
             case pawn:
                 if(IS_ON_BOARD(nextPiece.location+direction*0x0F))
-                    attackMap[nextPiece.location+direction*0x0F]=1;
+                    attackMap[nextPiece.location+direction*0x0F]+=0x01;
                 if(IS_ON_BOARD(nextPiece.location+direction*0x11))
-                    attackMap[nextPiece.location+direction*0x11]=1;
+                    attackMap[nextPiece.location+direction*0x11]+=0x01;
                 break;
             case knight:
                 for(int i=0;i<8;i++){
                     if(IS_ON_BOARD(nextPiece.location+knightdeltas[i]))
-                        attackMap[nextPiece.location+knightdeltas[i]]=1;
+                        attackMap[nextPiece.location+knightdeltas[i]]+=0x20;
                 }
                 break;
             case king:
                 for(int i=0;i<8;i++){
                     if(IS_ON_BOARD(nextPiece.location+kingdeltas[i]))
-                        attackMap[nextPiece.location+kingdeltas[i]]=1;
+                        attackMap[nextPiece.location+kingdeltas[i]]+=0x4000;
                 }
                 break;
             case queen:
@@ -743,7 +802,7 @@ void generateAttackMap(ChessBoard* board, enum Color attackerColor, int* attackM
                     int delta=rookdeltas[i];
                     int nextPosition=nextPiece.location+delta;
                     while(IS_ON_BOARD(nextPosition)){
-                        attackMap[nextPosition]=1;
+                        attackMap[nextPosition]+=0x03;
                         if(board->tiles[nextPosition])
                             break;
                         
@@ -755,7 +814,7 @@ void generateAttackMap(ChessBoard* board, enum Color attackerColor, int* attackM
                     int delta=bishopdeltas[i];
                     int nextPosition=nextPiece.location+delta;
                     while(IS_ON_BOARD(nextPosition)){
-                        attackMap[nextPosition]=1;
+                        attackMap[nextPosition]+=0x03;
                         if(board->tiles[nextPosition])
                             break;
                         
@@ -769,7 +828,7 @@ void generateAttackMap(ChessBoard* board, enum Color attackerColor, int* attackM
                     int delta=rookdeltas[i];
                     int nextPosition=nextPiece.location+delta;
                     while(IS_ON_BOARD(nextPosition)){
-                        attackMap[nextPosition]=1;
+                        attackMap[nextPosition]+=0x800;
                         if(board->tiles[nextPosition])
                             break;
                         
@@ -783,7 +842,7 @@ void generateAttackMap(ChessBoard* board, enum Color attackerColor, int* attackM
                     int delta=bishopdeltas[i];
                     int nextPosition=nextPiece.location+delta;
                     while(IS_ON_BOARD(nextPosition)){
-                        attackMap[nextPosition]=1;
+                        attackMap[nextPosition]+=0x100;
                         if(board->tiles[nextPosition])
                             break;
                         
@@ -908,22 +967,20 @@ ChError doMove(ChessBoard* board, Move* move, History* history){
     history->previousEnPassantSquare=board->enPassantSquare;
     history->oldRepetitionMoves=board->repetitionMoves;
     history->zobrist=board->zobrist;
-    history->whitePieceScore=board->whitePieceScore;
-    history->blackPieceScore=board->blackPieceScore;
+    history->oldScores[WHITE]=board->playerScores[WHITE];
+    history->oldScores[BLACK]=board->playerScores[BLACK];
 
     
     //capture piece
     if(board->tiles[move->to]!=0x0){
         history->capturedPiece=board->tiles[move->to];
         assert(history->capturedPiece->piece!=king);
-        if(myColor==BLACK){
-            board->whitePieceScore-=getPieceScore(history->capturedPiece->piece);
-            removePieceZobrist(&board->zobrist,move->to, history->capturedPiece->piece,WHITE);
-        }else{
-            board->blackPieceScore-=getPieceScore(history->capturedPiece->piece);
-            removePieceZobrist(&board->zobrist,move->to, history->capturedPiece->piece,BLACK);
-        }
- 
+        Color enemyColor=board->colorToPlay==WHITE?BLACK:WHITE;
+        
+        board->playerScores[enemyColor].totalScores-=getPieceScore(history->capturedPiece->piece);
+        board->playerScores[enemyColor].pieceCounts[history->capturedPiece->piece]--;
+        removePieceZobrist(&board->zobrist,move->to, history->capturedPiece->piece,enemyColor);
+      
         board->tiles[move->to]=NULL;
         history->capturedPiece->location=NO_LOCATION;
       
@@ -955,11 +1012,11 @@ ChError doMove(ChessBoard* board, Move* move, History* history){
             removePieceZobrist(&board->zobrist,fromPiece->location, fromPiece->piece, myColor);
             fromPiece->piece=move->promote;
             fromPiece->score=getPieceScore(move->promote);
-            if(myColor==BLACK){
-                board->blackPieceScore+=getPieceScore(move->promote)-100;   
-            }else{
-                board->whitePieceScore+=getPieceScore(move->promote)-100;
-            }
+            
+            board->playerScores[myColor].totalScores+=getPieceScore(move->promote)-100;
+            board->playerScores[myColor].pieceCounts[pawn]--;
+            board->playerScores[myColor].pieceCounts[move->promote]++;
+            
             addPieceZobrist(&board->zobrist,fromPiece->location, fromPiece->piece, myColor);
             break;
         case ENPASSANT:
@@ -1057,8 +1114,10 @@ ChError undoMove(ChessBoard* board,Move* move, History* history){
     board->castlingRights=history->castlingRights;
     board->enPassantSquare=history->previousEnPassantSquare;
     board->repetitionMoves=history->oldRepetitionMoves;
-    board->whitePieceScore=history->whitePieceScore;
-    board->blackPieceScore=history->blackPieceScore;
+
+    
+    board->playerScores[WHITE]=history->oldScores[WHITE];
+    board->playerScores[BLACK]=history->oldScores[BLACK];
     
     //unmovePiece
     board->tiles[move->from]=board->tiles[move->to];
@@ -1078,8 +1137,10 @@ ChError undoMove(ChessBoard* board,Move* move, History* history){
         case PAWNDOUBLE:
             break;
         case PROMOTION:
+            
             board->tiles[move->from]->piece=pawn;
             board->tiles[move->from]->score=getPieceScore(pawn);
+
             break;
         case NORMAL:
             break;
@@ -1689,3 +1750,9 @@ int compareBoards(ChessBoard* board1, ChessBoard* board2){
     
     return 0;
 }
+
+int rank(int index) { return (index - (index % 16)) / 16; }
+int boardFile(int index) { return index % 16; }
+int distance(int squareA, int squareB) {
+    return max(abs(boardFile(squareA) - boardFile(squareB)), abs(rank(squareA) - rank(squareB)));
+} 

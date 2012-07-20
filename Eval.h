@@ -11,6 +11,7 @@
 
 #include "Chengine.h"
 #include "Board.h"
+#include "TranspositionTable.h"
 
 int EvaluateComplex(ChessBoard* board);
 int evaluate(ChessBoard* board);

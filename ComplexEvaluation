@@ -1,0 +1,59 @@
+ply score time nodes pv
+
+1k1r4/pp1b1R2/3q2pp/4p3/2B5/4Q3/PPP2B2/2K5 b - - bm Qd1+; id "BK.01";
+6 300001 0.718  41287 d6d1  c1d1  d7g4  d1c1  k,l/  p)p1 
+
+3r1k2/4npp1/1ppr3p/p6P/P2PPPP1/1NR5/5K2/2R5 w - - bm d5; id "BK.02";
+12   33 51.472 2471771 f4f5  d6d7  f2g2  f8g8  g2g3  d8e8  c1c2  f7f6  c2c1  e8c8  g3h3  d7d4 
+
+2q1rr1k/3bbnnp/p2p1pp1/2pPp3/PpP1P1P1/1P2BNNP/2BQ1PRK/7R b - - bm f5; id "BK.03";
+6   37 2.303 161051 f6f5  g4f5  g6f5  f3g5  f5f4  g5f7
+
+rnbqkb1r/p3pppp/1p6/2ppP3/3N4/2P5/PPP1QPPP/R1B1KB1R w KQkq - bm e6; id "BK.04";
+6  -42 3.633 292904 e5e6  d8d6  e6f7  e8f7  e2f3  f7e8 
+
+r1b2rk1/2q1b1pp/p2ppn2/1p6/3QP3/1BN1B3/PPP3PP/R4RK1 w - - bm Nd5 a4; id "BK.05";
+7    3 38.086 3531447 a2a4  f6g4  a4b5  g4e3  d4e3  c7b7  f1f8 
+
+2r3k1/pppR1pp1/4p3/4P1P1/5P2/1P4K1/P1P5/8 w - - bm g6; id "BK.06";
+ 6  -17 0.065   3877 g5g6  f7g6  d7e7  g8h7  a2a4  h7g8  
+ 7  -46 0.189  18504 a2a4  g7g6  g3h4  g8f8  d7c7  k,l/  p)p1  
+ 8  -49 4.312 584300 d7d3  g7g6  d3d7  g8g7  g3h4  f8g7  d7c7  g7g8  
+ 9  -41 8.152 685234 g3g4  g7g6  a8a8  a6i)  p)p1  a*b)  b8a8  b8a8  p)p1  
+10  -22 11.717 605785 g5g6  f7g6  g3g4  a7a6  d7e7  g8f8  d7c7  a8a8  e7e6  c8c7 
+
+1nk1r1r1/pp2n1pp/4p3/q2pPp1N/b1pP1P2/B1P2R2/2P1B1PP/R2Q2K1 w - - bm Nf6; id "BK.07";
+7  -21 71.734 3527955 f3g3  e7g6  a3b4  a5a6  a1b1  b8c6  b4d6
+
+4b3/p3kp2/6p1/3pP2p/2pP1P2/4K1P1/P3N2P/8 w - - bm f5; id "BK.08";
+7    4 0.300  26584 f4f5  g6f5  e2f4  e8c6  f4h5  e7e8  h5f6 
+12   26 4.670 356609 f4f5  g6f5  e2f4  e8c6  f4h5  c6d7  h2h4  d7e6  h5f6  e7d8  e3f2  d8c8
+
+2kr1bnr/pbpq4/2n1pp2/3p3p/3P1P1B/2N2N1Q/PPP3PP/2KR1B1R w - - bm f5; id "BK.09";
+8   51 39.756 2415294 d1e1  d8e8  f1b5  d7d6  h4g3  e8e7  h1f1  f8g7  
+
+3rr1k1/pp3pp1/1qn2np1/8/3p4/PP1R1P2/2P1NQPP/R1B3K1 b - - bm Ne5; id "BK.10";
+8  106 68.684 3479652 c6e5  d3d4  e5g4  d4b4  a*h*  a8a8  g4f2  e2d4  
+
+1qr3k1/p2nbppp/bp2p3/3p4/3P4/1P2PNP1/P2Q1PBP/1N2R1K1 b - - bm Qc7; id "sbd.001";
+2  183 0.010    635 b8c7  e3e4
+6  160 6.196 492188 b8c7  e3e4  d5e4  f3g5  d7f6  g2e4  
+
+1r2r1k1/3bnppp/p2q4/2RPp3/4P3/6P1/2Q1NPBP/2R3K1 w - - bm Rc7; id "sbd.002";
+9   21 59.904 4931668 f2f4  f7f6  f4e5  f6e5  g2f3  d6b6  h2h4  e8c8  f3h5
+ 
+2b1k2r/2p2ppp/1qp4n/7B/1p2P3/5Q2/PPPr2PP/R2N1R1K b k - bm O-O; id "sbd.003";
+7   23 6.836 557236 c8e6  d1e3  e8g8  f1f2  d2d7  f3g3  g7f6 
+
+2b5/1p4k1/p2R2P1/4Np2/1P3Pp1/1r6/5K2/8 w - - bm Rd8; id "sbd.004";
+ 1   61 0.001     55 d6d8  
+ 9 -100 3.913 296623 d6d8  c8e6  d8d6  e6c8  d6d8  a3g*  a8a8  a6i)  p)p1  
+10 -100 12.335 1323096 d6d4  c8e6  d4d6  e6c8  k,l/  p)p1  d6e6  b3b4  k,l/  p)p1 
+
+2brr1k1/ppq2ppp/2pb1n2/8/3NP3/2P2P2/P1Q2BPP/1R1R1BK1 w - - bm g3; id "sbd.005";
+ 1  -11 0.003    195 g2g3  
+ 2  -28 0.010    491 g2g3  c8d7  
+ 3  -10 0.056   3806 g2g3  c8d7  f1c4  
+ 4   -9 0.360  26609 g2g3  b7b6  f1g2  c8d7  
+ 5   -2 1.333 101134 g2g3  g7g6  f1c4  c8h3  f2e3  
+ 6   -6 6.339 522067 g2g3  b7b6  c2a4  b6b5  a4b3  c8d7

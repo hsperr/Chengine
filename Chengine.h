@@ -41,6 +41,11 @@ typedef enum {
     ChError_StaleMate
 } ChError;
 
+typedef struct PieceScores{
+    char pieceCounts[6]; //pnkbrq
+    int totalScores;
+}PieceScores;
+
 typedef struct PieceInfo{
     PIECE piece;
     int location;
@@ -66,8 +71,7 @@ typedef struct History{
     int oldRepetitionMoves;
     int castlingRights;
     u_int64_t zobrist;
-    int whitePieceScore;
-    int blackPieceScore;
+    PieceScores oldScores[2];
 }History;
 
 typedef struct Move{
@@ -98,6 +102,13 @@ enum {
     queen
 };
 
+typedef enum GamePhase{
+Opening,
+MiddleGame,
+EndGame
+}GamePhase;
+
+
 typedef struct ChessBoard{
     //size of fixed 16x8 bit
     //00 01 02 03 04 05 06 07   08 09 0A 0B 0C 0D 0E 0F
@@ -115,9 +126,9 @@ typedef struct ChessBoard{
     //                 RNBWKBNRPPPPPPPP
     //gets updated in doMove() -1 denotes piece is off the board
     PieceInfo blackToSquare[16];
-    int whitePieceScore;
     PieceInfo whiteToSquare[16];
-    int blackPieceScore;
+    PieceScores playerScores[2];
+    GamePhase phase;
     
     Color colorToPlay;
     MoveList playedMoves;

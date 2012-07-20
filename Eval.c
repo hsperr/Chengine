@@ -8,301 +8,580 @@
 
 #include "Eval.h"
 
-//EVAL MATRICES ARE FROM CRAFTY SOURCE
-int pval[2][128] = {
-    { 0,   0,   0,   0,   0,   0,   0,   0,0,0,0,0,0,0,0,0,
-        66,  66,  66,  66,  66,  66,  66,  66,0,0,0,0,0,0,0,0,
-        10,  10,  10,  30,  30,  10,  10,  10,0,0,0,0,0,0,0,0,
-        6,   6,   6,  16,  16,   6,   6,   6,0,0,0,0,0,0,0,0,
-        3,   3,   3,  13,  13,   3,   3,   3,0,0,0,0,0,0,0,0,   /* [mg][black][64] */
-        1,   1,   1,  10,  10,   1,   1,   1,0,0,0,0,0,0,0,0,
-        0,   0,   0, -12, -12,   0,   0,   0,0,0,0,0,0,0,0,0,
-        0,   0,   0,   0,   0,   0,   0,   0 ,0,0,0,0,0,0,0,0},
-        
-        { 0,   0,   0,   0,   0,   0,   0,   0,0,0,0,0,0,0,0,0,
-            0,   0,   0, -12, -12,   0,   0,   0,0,0,0,0,0,0,0,0,
-            1,   1,   1,  10,  10,   1,   1,   1,0,0,0,0,0,0,0,0,
-            3,   3,   3,  13,  13,   3,   3,   3,0,0,0,0,0,0,0,0,
-            6,   6,   6,  16,  16,   6,   6,   6,0,0,0,0,0,0,0,0,   /* [mg][white][64] */
-            10,  10,  10,  30,  30,  10,  10,  10,0,0,0,0,0,0,0,0,
-            66,  66,  66,  66,  66,  66,  66,  66,0,0,0,0,0,0,0,0,
-            0,   0,   0,   0,   0,   0,   0,   0,0,0,0,0,0,0,0,0 }
-};
-int qval[2][128] = {
-    { 0,   0,   0,   0,   0,   0,   0,   0,0,0,0,0,0,0,0,0,
-        0,   0,   4,   4,   4,   4,   0,   0,0,0,0,0,0,0,0,0,
-        0,   4,   4,   6,   6,   4,   4,   0,0,0,0,0,0,0,0,0,
-        0,   4,   6,   8,   8,   6,   4,   0,0,0,0,0,0,0,0,0,
-        0,   4,   6,   8,   8,   6,   4,   0,0,0,0,0,0,0,0,0,   /* [mg][black][64] */
-        0,   4,   4,   6,   6,   4,   4,   0,0,0,0,0,0,0,0,0,
-        0,   0,   4,   4,   4,   4,   0,   0,0,0,0,0,0,0,0,0,
-        0,   0,   0,   0,   0,   0,   0,   0,0,0,0,0,0,0,0,0 },
-        
-        { 0,   0,   0,   0,   0,   0,   0,   0,0,0,0,0,0,0,0,0,
-            0,   0,   4,   4,   4,   4,   0,   0,0,0,0,0,0,0,0,0,
-            0,   4,   4,   6,   6,   4,   4,   0,0,0,0,0,0,0,0,0,
-            0,   4,   6,   8,   8,   6,   4,   0,0,0,0,0,0,0,0,0,
-            0,   4,   6,   8,   8,   6,   4,   0, 0,0,0,0,0,0,0,0,  /* [mg][white][64] */
-            0,   4,   4,   6,   6,   4,   4,   0,0,0,0,0,0,0,0,0,
-            0,   0,   4,   4,   4,   4,   0,   0,0,0,0,0,0,0,0,0,
-            0,   0,   0,   0,   0,   0,   0,   0,0,0,0,0,0,0,0,0},
-};
-int bval[2][128] = {
-    {  0,   0,   2,   4,   4,   2,   0,   0,0,0,0,0,0,0,0,0,
-        0,   8,   6,   8,   8,   6,   8,   0,0,0,0,0,0,0,0,0,
-        2,   6,  12,  10,  10,  12,   6,   2,0,0,0,0,0,0,0,0,
-        4,   8,  10,  16,  16,  10,   8,   4,0,0,0,0,0,0,0,0,
-        4,   8,  10,  16,  16,  10,   8,   4,0,0,0,0,0,0,0,0,   /* [mg][black][127] */
-        2,   6,  12,  10,  10,  12,   6,   2,0,0,0,0,0,0,0,0,
-        0,   8,   6,   8,   8,   6,   8,   0,0,0,0,0,0,0,0,0,
-        -10, -10,  -8,  -6,  -6,  -8, -10, -10,0,0,0,0,0,0,0,0, },
-    
-    {-10, -10,  -8,  -6,  -6,  -8, -10, -10,0,0,0,0,0,0,0,0,
-        0,   8,   6,   8,   8,   6,   8,   0,0,0,0,0,0,0,0,0,
-        2,   6,  12,  10,  10,  12,   6,   2,0,0,0,0,0,0,0,0,
-        4,   8,  10,  16,  16,  10,   8,   4,0,0,0,0,0,0,0,0,
-        4,   8,  10,  16,  16,  10,   8,   4,0,0,0,0,0,0,0,0,   /* [mg][white][127] */
-        2,   6,  12,  10,  10,  12,   6,   2,0,0,0,0,0,0,0,0,
-        0,   8,   6,   8,   8,   6,   8,   0,0,0,0,0,0,0,0,0,
-        0,   0,   2,   4,   4,   2,   0,   0,0,0,0,0,0,0,0,0, }
-    
-};
-int nval[2][128] = {
-    {-29, -19, -19,  -9,  -9, -19, -19, -29,0,0,0,0,0,0,0,0,
-        1,  12,  18,  22,  22,  18,  12,   1,0,0,0,0,0,0,0,0,
-        1,  14,  23,  27,  27,  23,  14,   1,0,0,0,0,0,0,0,0,
-        1,  14,  23,  28,  28,  23,  14,   1,0,0,0,0,0,0,0,0,
-        1,  12,  21,  24,  24,  21,  12,   1,0,0,0,0,0,0,0,0,  /* [mg][black][64] */
-        1,   2,  19,  17,  17,  19,   2,   1,0,0,0,0,0,0,0,0,
-        1,   2,   2,   2,   2,   2,   2,   1,0,0,0,0,0,0,0,0,
-        -19, -19, -19, -19, -19, -19, -19, -19,0,0,0,0,0,0,0,0 },
-    
-    {-19, -19, -19, -19, -19, -19, -19, -19,0,0,0,0,0,0,0,0,
-        1,   2,   2,   2,   2,   2,   2,   1,0,0,0,0,0,0,0,0,
-        1,   2,  19,  17,  17,  19,   2,   1,0,0,0,0,0,0,0,0,
-        1,  12,  21,  24,  24,  21,  12,   1,0,0,0,0,0,0,0,0,
-        1,  14,  23,  28,  28,  23,  14,   1,0,0,0,0,0,0,0,0,  /* [mg][white][64] */
-        1,  14,  23,  27,  27,  23,  14,   1,0,0,0,0,0,0,0,0,
-        1,  12,  18,  22,  22,  18,  12,   1,0,0,0,0,0,0,0,0,
-        -29, -19, -19,  -9,  -9, -19, -19, -29,0,0,0,0,0,0,0,0 }
-    
-};
-int knight_outpost[2][128] = {
-    { 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0,0,0,
-        0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0,0,0,
-        0, 1, 4, 4, 4, 4, 1, 0,0,0,0,0,0,0,0,0,
-        0, 2, 6, 8, 8, 6, 2, 0,0,0,0,0,0,0,0,0,
-        0, 1, 4, 4, 4, 4, 1, 0,0,0,0,0,0,0,0,0,   /* [black][64] */
-        0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0,0,0,
-        0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0,0,0,
-        0, 0, 0, 0, 0, 0, 0, 0 ,0,0,0,0,0,0,0,0},
-    
-    { 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0,0,0,
-        0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0,0,0,
-        0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0,0,0,
-        0, 1, 4, 4, 4, 4, 1, 0,0,0,0,0,0,0,0,0,
-        0, 2, 6, 8, 8, 6, 2, 0,0,0,0,0,0,0,0,0,   /* [white][64] */
-        0, 1, 4, 4, 4, 4, 1, 0,0,0,0,0,0,0,0,0,
-        0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0,0,0,
-        0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0,0,0}
-};
-int bishop_outpost[2][128] = {
-    { 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0,0,0,
-        -1, 0, 0, 0, 0, 0, 0,-1,0,0,0,0,0,0,0,0,
-        0, 0, 1, 1, 1, 1, 0, 0,0,0,0,0,0,0,0,0,
-        0, 1, 3, 3, 3, 3, 1, 0,0,0,0,0,0,0,0,0,
-        0, 3, 5, 5, 5, 5, 3, 0,0,0,0,0,0,0,0,0,   /* [black][127] */
-        0, 1, 2, 2, 2, 2, 1, 0,0,0,0,0,0,0,0,0,
-        0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0,0,0,
-        0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0,0,0, },
-    
-    { 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0,0,0,
-        0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0,0,0,
-        0, 1, 2, 2, 2, 2, 1, 0,0,0,0,0,0,0,0,0,
-        0, 3, 5, 5, 5, 5, 3, 0,0,0,0,0,0,0,0,0,
-        0, 1, 3, 3, 3, 3, 1, 0,0,0,0,0,0,0,0,0,   /* [white][127] */
-        0, 0, 1, 1, 1, 1, 0, 0,0,0,0,0,0,0,0,0,
-        -1, 0, 0, 0, 0, 0, 0,-1,0,0,0,0,0,0,0,0,
-        0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0,0,0, }
-};
 
-int imbalance[9][9] = {
-    /* n=-4  n=-3  n=-2  n=-1   n=0  n=+1  n=+2  n=+3 +n=+4 */
-    {-126, -126, -126, -126, -126, -126, -126, -126,  -42 }, /* R=-4 */
-    {-126, -126, -126, -126, -126, -126, -126,  -42,   42 }, /* R=-3 */
-    {-126, -126, -126, -126, -126, -126,  -42,   42,   84 }, /* R=-2 */
-    {-126, -126, -126, -126, -104,  -42,   42,   84,  126 }, /* R=-1 */
-    {-126, -126, -126,  -88,    0,   88,  126,  126,  126 }, /*  R=0 */
-    {-126,  -84,  -42,   42,  104,  126,  126,  126,  126 }, /* R=+1 */
-    { -84,  -42,   42,  126,  126,  126,  126,  126,  126 }, /* R=+2 */
-    { -42,   42,  126,  126,  126,  126,  126,  126,  126 }, /* R=+3 */
-    {  42,  126,  126,  126,  126,  126,  126,  126,  126 }  /* R=+4 */
-};
+static inline int IS_ON_BOARD(int x)   {return (x&0x88)==0;};
+
+static  int KING_POS[2][128] =
+{{
+    10,  20,   0,   0,   0,   0,  20,  10,    0,0,0,0,0,0,0,0,
+    10,  15,   0,   0,   0,   0,  15,  10,    0,0,0,0,0,0,0,0,
+    -10, -20, -20, -25, -25, -20, -20, -10,    0,0,0,0,0,0,0,0,
+    -15, -25, -40, -40, -40, -40, -25, -15,    0,0,0,0,0,0,0,0,
+    -30, -40, -40, -40, -40, -40, -40, -30,    0,0,0,0,0,0,0,0,
+    -40, -50, -50, -50, -50, -50, -50, -40,    0,0,0,0,0,0,0,0,
+    -50, -50, -50, -50, -50, -50, -50, -50,    0,0,0,0,0,0,0,0,
+    -50, -50, -50, -50, -50, -50, -50, -50,    0,0,0,0,0,0,0,0
+},{
+    -50, -50, -50, -50, -50, -50, -50, -50,    0,0,0,0,0,0,0,0,
+    -50, -50, -50, -50, -50, -50, -50, -50,    0,0,0,0,0,0,0,0,
+    -40, -50, -50, -50, -50, -50, -50, -40,    0,0,0,0,0,0,0,0,
+    -30, -40, -40, -40, -40, -40, -40, -30,    0,0,0,0,0,0,0,0,
+    -15, -25, -40, -40, -40, -40, -25, -15,    0,0,0,0,0,0,0,0,
+    -10, -20, -20, -25, -25, -20, -20, -10,    0,0,0,0,0,0,0,0,
+    10,  15,   0,   0,   0,   0,  15,  10,    0,0,0,0,0,0,0,0,
+    10,  20,   0,   0,   0,   0,  20,  10,    0,0,0,0,0,0,0,0
+}
+};	
 
 
-//my own arrays
-int centralization[128]={ 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-    0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,
-    0,1,2,2,2,2,1,0,0,0,0,0,0,0,0,0,
-    0,1,2,3,3,2,1,0,0,0,0,0,0,0,0,0,
-    0,1,2,3,3,2,1,0,0,0,0,0,0,0,0,0,
-    0,1,2,2,2,2,1,0,0,0,0,0,0,0,0,0,
-    0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,
-    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+static int QUEEN_POS[2][128] =
+{{
+    0,   0,   0,   0,   0,   0,   0,   0,    0,0,0,0,0,0,0,0,
+    0,   0,   0,   0,   0,   0,   0,   0,    0,0,0,0,0,0,0,0,
+    0,   0,   0,   0,   0,   0,   0,   0,    0,0,0,0,0,0,0,0,
+    0,   0,   0,   0,   0,   0,   0,   0,    0,0,0,0,0,0,0,0,
+    0,   0,   0,   0,   0,   0,   0,   0,    0,0,0,0,0,0,0,0,
+    0,   0,   0,   0,   0,   0,   0,   0,    0,0,0,0,0,0,0,0,
+    0,   0,   0,   0,   0,   0,   0,   0,    0,0,0,0,0,0,0,0,
+    -10, -10, -10, -10, -10, -10, -10, -10,    0,0,0,0,0,0,0,0
+},{
+    -10, -10, -10, -10, -10, -10, -10, -10,    0,0,0,0,0,0,0,0,
+    0,   0,   0,   0,   0,   0,   0,   0,    0,0,0,0,0,0,0,0,
+    0,   0,   0,   0,   0,   0,   0,   0,    0,0,0,0,0,0,0,0,
+    0,   0,   0,   0,   0,   0,   0,   0,    0,0,0,0,0,0,0,0,
+    0,   0,   0,   0,   0,   0,   0,   0,    0,0,0,0,0,0,0,0,
+    0,   0,   0,   0,   0,   0,   0,   0,    0,0,0,0,0,0,0,0,
+    0,   0,   0,   0,   0,   0,   0,   0,    0,0,0,0,0,0,0,0,
+    0,   0,   0,   0,   0,   0,   0,   0,    0,0,0,0,0,0,0,0
+}};
+
+static int ROOK_POS[2][128] =
+{{
+    -6,   -3,   0,   3,   3,   0,   -3,   -6,    0,0,0,0,0,0,0,0,
+    -6,   -3,   0,   3,   3,   0,   -3,   -6,    0,0,0,0,0,0,0,0,
+    -6,   -3,   0,   3,   3,   0,   -3,   -6,    0,0,0,0,0,0,0,0,
+    -6,   -3,   0,   3,   3,   0,   -3,   -6,    0,0,0,0,0,0,0,0,
+    -6,   -3,   0,   3,   3,   0,   -3,   -6,    0,0,0,0,0,0,0,0,
+    -6,   -3,   0,   3,   3,   0,   -3,   -6,    0,0,0,0,0,0,0,0,
+    -6,   -3,   0,   3,   3,   0,   -3,   -6,    0,0,0,0,0,0,0,0,
+    -6,   -3,   0,   3,   3,   0,   -3,   -6,    0,0,0,0,0,0,0,0
+},{
+    -6,   -3,   0,   3,   3,   0,   -3,   -6,    0,0,0,0,0,0,0,0,
+    -6,   -3,   0,   3,   3,   0,   -3,   -6,    0,0,0,0,0,0,0,0,
+    -6,   -3,   0,   3,   3,   0,   -3,   -6,    0,0,0,0,0,0,0,0,
+    -6,   -3,   0,   3,   3,   0,   -3,   -6,    0,0,0,0,0,0,0,0,
+    -6,   -3,   0,   3,   3,   0,   -3,   -6,    0,0,0,0,0,0,0,0,
+    -6,   -3,   0,   3,   3,   0,   -3,   -6,    0,0,0,0,0,0,0,0,
+    -6,   -3,   0,   3,   3,   0,   -3,   -6,    0,0,0,0,0,0,0,0,
+    -6,   -3,   0,   3,   3,   0,   -3,   -6,    0,0,0,0,0,0,0,0
+}};
+
+static  int BISHOP_POS[2][128] =
+{{
+    -8,  -8,  -6,  -4,  -4,  -6,  -8,  -8,    0,0,0,0,0,0,0,0,
+    -5,   0,  -2,   0,   0,  -2,   0,  -5,    0,0,0,0,0,0,0,0,
+    -6,  -2,   4,   2,   2,   4,  -2,  -6,    0,0,0,0,0,0,0,0,
+    -4,   0,   2,  10,  10,   2,   0,  -4,    0,0,0,0,0,0,0,0,
+    -4,   0,   2,  10,  10,   2,   0,  -4,    0,0,0,0,0,0,0,0,
+    -6,  -2,   4,   2,   2,   4,  -2,  -6,    0,0,0,0,0,0,0,0,
+    -5,   0,  -5,   0,   0,  -5,   0,  -5,    0,0,0,0,0,0,0,0,
+    -20, -15, -15, -13, -13, -15, -15, -20,    0,0,0,0,0,0,0,0
+},{
+    -20, -15, -15, -13, -13, -15, -15, -20,    0,0,0,0,0,0,0,0,
+    -5,   0,  -5,   0,   0,  -5,   0,  -5,    0,0,0,0,0,0,0,0,
+    -6,  -2,   4,   2,   2,   4,  -2,  -6,    0,0,0,0,0,0,0,0,
+    -4,   0,   2,  10,  10,   2,   0,  -4,    0,0,0,0,0,0,0,0,
+    -4,   0,   2,  10,  10,   2,   0,  -4,    0,0,0,0,0,0,0,0,
+    -6,  -2,   4,   2,   2,   4,  -2,  -6,    0,0,0,0,0,0,0,0,
+    -5,   0,  -2,   0,   0,  -2,   0,  -5,    0,0,0,0,0,0,0,0,
+    -8,  -8,  -6,  -4,  -4,  -6,  -8,  -8,    0,0,0,0,0,0,0,0
+}};
+
+static int KNIGHT_POS[2][128] =//[color][index]
+{{-135, -25, -15, -10, -10, -15, -25,-135,	0,0,0,0,0,0,0,0,
+    -20, -10,   0,   5,   5,   0, -10, -20,	0,0,0,0,0,0,0,0,
+    -5,   5,  15,  20,  20,  15,   5,  -5,	0,0,0,0,0,0,0,0,
+    -5,   5,  15,  20,  20,  15,   5,  -5,	0,0,0,0,0,0,0,0,
+    -10,   0,  10,  15,  15,  10,   0, -10,	0,0,0,0,0,0,0,0,
+    -20, -10,   0,   5,   5,   0, -10, -20,	0,0,0,0,0,0,0,0,
+    -35, -25, -15, -10, -10, -15, -25, -35,	0,0,0,0,0,0,0,0,
+    -50, -40, -30, -25, -25, -30, -40, -50,	0,0,0,0,0,0,0,0
+},{		
+    -50, -40, -30, -25, -25, -30, -40, -50,		0,0,0,0,0,0,0,0,
+    -35, -25, -15, -10, -10, -15, -25, -35,	0,0,0,0,0,0,0,0,
+    -20, -10,   0,   5,   5,   0, -10, -20,	0,0,0,0,0,0,0,0,
+    -10,   0,  10,  15,  15,  10,   0, -10,	0,0,0,0,0,0,0,0,
+    -5,   5,  15,  20,  20,  15,   5,  -5,		0,0,0,0,0,0,0,0,
+    -5,   5,  15,  20,  20,  15,   5,  -5,	0,0,0,0,0,0,0,0,
+    -20, -10,   0,   5,   5,   0, -10, -20,	0,0,0,0,0,0,0,0,
+    -135, -25, -15, -10, -10, -15, -25,-135,	0,0,0,0,0,0,0,0
+}
+};
+static  int KNIGHT_OUTPOST[2][128] =//[color][index]
+{{0,   0,   0,   0,   0,   0,   0,   0,    0,0,0,0,0,0,0,0,
+    0,   0,   0,   0,   0,   0,   0,   0,    0,0,0,0,0,0,0,0,
+    0,   0,   4,   5,   5,   4,   0,   0,    0,0,0,0,0,0,0,0,
+    0,   2,   5,  10,  10,   5,   2,   0,    0,0,0,0,0,0,0,0,
+    0,   2,   5,  10,  10,   5,   2,   0,    0,0,0,0,0,0,0,0,
+    0,   0,   0,   0,   0,   0,   0,   0,    0,0,0,0,0,0,0,0,
+    0,   0,   0,   0,   0,   0,   0,   0,    0,0,0,0,0,0,0,0,
+    0,   0,   0,   0,   0,   0,   0,   0,    0,0,0,0,0,0,0,0
+},{
+    0,   0,   0,   0,   0,   0,   0,   0,    0,0,0,0,0,0,0,0,
+    0,   0,   0,   0,   0,   0,   0,   0,    0,0,0,0,0,0,0,0,
+    0,   0,   0,   0,   0,   0,   0,   0,    0,0,0,0,0,0,0,0,
+    0,   2,   5,  10,  10,   5,   2,   0,    0,0,0,0,0,0,0,0,
+    0,   2,   5,  10,  10,   5,   2,   0,    0,0,0,0,0,0,0,0,
+    0,   0,   4,   5,   5,   4,   0,   0,    0,0,0,0,0,0,0,0,
+    0,   0,   0,   0,   0,   0,   0,   0,    0,0,0,0,0,0,0,0,
+    0,   0,   0,   0,   0,   0,   0,   0,    0,0,0,0,0,0,0,0
+}};	
+static int PAWN_POS[2][128] = //[color][index]
+{
+    {
+        -15,   -5,   0,   5,   5,   0,   -5,   -15,    0,0,0,0,0,0,0,0,
+        -15,   -5,   0,   5,   5,   0,   -5,   -15,    0,0,0,0,0,0,0,0,
+        -15,   -5,   0,   5,   5,   0,   -5,   -15,    0,0,0,0,0,0,0,0,
+        -15,   -5,   0,  15,  15,   0,   -5,   -15,    0,0,0,0,0,0,0,0,
+        -15,   -5,   0,  25,  25,   0,   -5,   -15,    0,0,0,0,0,0,0,0,
+        -15,   -5,   0,  15,  15,   0,   -5,   -15,    0,0,0,0,0,0,0,0,
+        -15,   -5,   0,   5,   5,   0,   -5,   -15,    0,0,0,0,0,0,0,0,
+        -15,   -5,   0,   5,   5,   0,   -5,   -15,    0,0,0,0,0,0,0,0
+    },{
+        -15,   -5,   0,   5,   5,   0,   -5,   -15,    0,0,0,0,0,0,0,0,
+        -15,   -5,   0,   5,   5,   0,   -5,   -15,    0,0,0,0,0,0,0,0,
+        -15,   -5,   0,  15,  15,   0,   -5,   -15,    0,0,0,0,0,0,0,0,
+        -15,   -5,   0,  25,  25,   0,   -5,   -15,    0,0,0,0,0,0,0,0,
+        -15,   -5,   0,  15,  15,   0,   -5,   -15,    0,0,0,0,0,0,0,0,
+        -15,   -5,   0,   5,   5,   0,   -5,   -15,    0,0,0,0,0,0,0,0,
+        -15,   -5,   0,   5,   5,   0,   -5,   -15,    0,0,0,0,0,0,0,0,
+        -15,   -5,   0,   5,   5,   0,   -5,   -15,    0,0,0,0,0,0,0,0}
+};
+static int KING_ATTACK_EVAL[] =
+{   0,  2,  3,  6, 12, 18, 25, 37, 50, 75,
+    100,125,150,175,200,225,250,275,300,325,
+    350,375,400,425,450,475,500,525,550,575, 
+    600,600,600,600,600,600,600,600,600,600,
+    600,600,600,600,600,600,600,600,600,600,
+    600,600,600,600,600,600,600,600,600,600,
+    600,600,600,600,600,600,600,600,600,600,
+    600,600,600,600,600,600,600,600,600,600
+};
+
+int pawnsOnFile[2][8];
 
 
+//piece is closer to king gets better scores
+static int TROPISM_KNIGHT[] = {0, 3, 3, 2, 1, 0, 0, 0};
+static int TROPISM_BISHOP[] = {0, 2, 2, 1, 0, 0, 0, 0};
+static int TROPISM_ROOK[] =   {0, 3, 2, 1, 0, 0, 0, 0};
+static int TROPISM_QUEEN[] =  {0, 4, 3, 2, 1, 0, 0, 0};
 
-
+const int DOUBLED_PAWN=20;
+const int BISHOP_PAIR=50;
+const int ROOK_OPEN=20;
+const int ROOK_SEMI_OPEN=15;
 const int NO_LOCATION=-5;
 
 int evaluate(ChessBoard* board){
-    int score=0;
-    if(board->colorToPlay==WHITE)
-        score=board->whitePieceScore-board->blackPieceScore;
-    else
-        score=board->blackPieceScore-board->whitePieceScore;
     
-    
-    
-    return score;
+    return board->playerScores[board->colorToPlay].totalScores-board->playerScores[board->colorToPlay==WHITE?BLACK:WHITE].totalScores;
     
 }
 
-int EvaluateBishops(ChessBoard* board,PieceInfo* bishopsArray, Color color){
-    int score=0;
-    
-    int location=bishopsArray->location;
-    score+=bval[color][location];
-    
-    score+=bishop_outpost[color][location];
-    
-    
-    return score;
+int eval_trapped(ChessBoard* board, Color color){
+    return 0;
 }
 
-int EvaluateKnights(ChessBoard* board,PieceInfo* knightsArray, Color color){
+static int eval_pawn(ChessBoard* board, int index, Color color){
+    
     int score=0;
     
-    int location=knightsArray->location;
-    score+=nval[color][location];
+    score+=PAWN_POS[color][index];
+    pawnsOnFile[color][boardFile(index)]++;
     
-    score+=knight_outpost[color][location];
-    
-    
-    return score;
-}
-
-int EvaluateComplex(ChessBoard* board){
-    int whitePawnCount=0;
-    int whiteMajors=0;
-    int blackPawnCount=0;
-    int blackMajors=0;
-    
-    
-    
-    int wScore=0;
-    int bScore=0;
-    
-    if(board->whitePieceScore!=getPieceScore(king)&&board->blackPieceScore!=getPieceScore(king)){
-        for(int i=0;i<16;i++){
-            if(board->whiteToSquare[i].location!=NO_LOCATION){
-                if(board->whiteToSquare[i].piece==pawn){
-                    wScore+=pval[WHITE][board->whiteToSquare[i].location];
-                    whitePawnCount++;
-                }else{
-                    whiteMajors++;   
-                    if(board->whiteToSquare[i].piece==bishop){
-                        wScore+=EvaluateBishops(board, &board->whiteToSquare[i], WHITE);
-                    }
-                    else if(board->whiteToSquare[i].piece==knight){
-                        wScore+=EvaluateKnights(board, &board->whiteToSquare[i], WHITE);
-                    }
-                    else if(board->whiteToSquare[i].piece==queen){
-                        wScore+=qval[WHITE][board->whiteToSquare[i].location];
-                    }else if(board->whiteToSquare[i].piece==rook){
-                        int pawnFound=0;
-                        for(int k=0;k<8;k++){
-                            int index=(board->whiteToSquare[i].location&0x0F)+k*0x10;
-                            if(board->tiles[index]&&board->tiles[index]->piece==pawn){
-                                pawnFound++;
-                                break;
-                            }
-                        }
-                        if(pawnFound==0)
-                            wScore+=35;
-                    }
-
-                }
-                
-            }
-            if(board->blackToSquare[i].location!=NO_LOCATION){
-                if(board->blackToSquare[i].piece==pawn){
-                    bScore+=pval[BLACK][board->blackToSquare[i].location];
-                    blackPawnCount++;
-                }else{
-                    blackMajors++;
-                    if(board->blackToSquare[i].piece==bishop){
-                        bScore+=EvaluateBishops(board, &board->blackToSquare[i], BLACK);
-                    }else if(board->blackToSquare[i].piece==knight){
-                        bScore+=EvaluateKnights(board, &board->blackToSquare[i], BLACK);
-                    }
-                    else if(board->blackToSquare[i].piece==queen){
-                        bScore+=qval[BLACK][board->blackToSquare[i].location];
-                    }else if(board->whiteToSquare[i].piece==rook){
-                        int pawnFound=0;
-                        for(int k=0;k<8;k++){
-                            int index=(board->blackToSquare[i].location&0x0F)+k*0x10;
-                            if(board->tiles[index]&&board->tiles[index]->piece==pawn){
-                                pawnFound++;
-                                break;
-                            }
-                        }
-                        if(pawnFound==0)
-                            bScore+=35;
-                    }
-                }
-                
-            }
-            
-        }
-        //CASTLE AND MOBILITY
-        wScore+=20*board->hasCastled&0x1;
-        bScore+=20*(board->hasCastled&0x2>>1);
-        
-        int attackMap[127]={0};
-        int battackMap[127]={0};
-        generateAttackMap(board, WHITE, attackMap);
-        generateAttackMap(board, BLACK, battackMap);
-        for(int i=0;i<127;i++){
-            wScore+=attackMap[i];
-            bScore+=battackMap[i];
-        }
-        
-        //Imbalance
-        int major = 4+whiteMajors-blackMajors;
-        int minor = 4+whitePawnCount-blackPawnCount;
-        major=max(min(major,8),0);
-        minor=max(min(minor,8),0);
-        
-        //wScore+=imbalance[major][minor];
-       // bScore-=imbalance[major][minor];
-        
-        wScore+=board->whitePieceScore;
-        bScore+=board->blackPieceScore;
-        
-        if(board->colorToPlay==WHITE){
-            wScore+=5;
-            return (wScore-bScore);
-        }else{
-            bScore+=5;
-            return (bScore-wScore);
-        }
-        
-        
-        
-    }else{
-        return 0;
+    if(pawnsOnFile[color][boardFile(index)]>1){
+        score-=DOUBLED_PAWN;
     }
     
+    return score;
+}
+static int eval_knight(ChessBoard* board, int index, Color color){
+    
+    int score=0;
+    
+    score+=KNIGHT_POS[color][index];
+    
+    int outPost=KNIGHT_OUTPOST[color][index];
+    if(outPost!=0){
+        int direction=color==WHITE?-1:1;
+        //defendet twice
+        int defendedLeft=board->tiles[index-0x11*direction]&&(board->tiles[index-0x11*direction]->color==color&&
+                          board->tiles[index-0x11*direction]->piece==pawn);
+        int defendedRight=board->tiles[index-0x0F*direction]&&(board->tiles[index-0x0F*direction]->color==color&&
+                           board->tiles[index-0x0F*direction]->piece==pawn);
+        if(defendedLeft&&defendedRight){
+            score+=2*outPost;
+        }else if(defendedLeft){
+            score+=outPost;
+        }else if(defendedRight){
+            score+=outPost;
+        }
+    }
+    
+    if(color==WHITE){
+        score+=TROPISM_KNIGHT[distance(board->blackToSquare[0].location, index)];
+    }else{
+         score+=TROPISM_KNIGHT[distance(board->whiteToSquare[0].location, index)];
+    }
+    return score;
+}
+
+static int eval_bishop(ChessBoard* board, int index, Color color){
+    int score=0;
+    score+=BISHOP_POS[color][index];
+    
+    if(color==WHITE){
+        score+=TROPISM_BISHOP[distance(board->blackToSquare[0].location, index)];
+    }else{
+        score+=TROPISM_BISHOP[distance(board->whiteToSquare[0].location, index)];
+    }
+    
+    if(board->playerScores[color].pieceCounts[bishop]>=2){
+        score+=BISHOP_PAIR;
+    }
+    return score;
+}
+
+static int eval_rook(ChessBoard* board, int index, Color color){
+    int score=0;
+    score+=ROOK_POS[color][index];
+    
+    if(color==WHITE){
+        score+=TROPISM_ROOK[distance(board->blackToSquare[0].location, index)];
+    }else{
+        score+=TROPISM_ROOK[distance(board->whiteToSquare[0].location, index)];
+    }
+    
+    
+    //semi open file only enemy
+    if(pawnsOnFile[color][boardFile(index)]==0 && pawnsOnFile[color==WHITE?BLACK:WHITE][boardFile(index)]!=0){
+        score+=ROOK_SEMI_OPEN;
+    }else if(pawnsOnFile[color][boardFile(index)]==0 && pawnsOnFile[color==WHITE?BLACK:WHITE][boardFile(index)]==0){
+        score+=ROOK_OPEN;
+    }
+ 
+    return score;
+}
+static int eval_queen(ChessBoard* board, int index, Color color){
+    int score=0;
+    
+    
+    if(color==WHITE){
+        score+=TROPISM_QUEEN[distance(board->blackToSquare[0].location, index)];
+    }else{
+        score+=TROPISM_QUEEN[distance(board->whiteToSquare[0].location, index)];
+    }
+    
+    score+=QUEEN_POS[color][index];
+    return score;
+}
+static int eval_king(ChessBoard* board, int index, Color color){
+    int score=0;
+    score+=KING_POS[color][index];
+    return score;
+}   
+static int evaluatePiece(ChessBoard* board, PieceInfo* piece, Color color){
+    int score=0;
+    switch (piece->piece) {
+        case pawn:
+            score+=eval_pawn(board, piece->location, color);
+            break;
+        case queen:
+            score+=eval_queen(board, piece->location, color);
+            break;
+        case knight:
+            score+=eval_knight(board,piece->location,color);
+            break;
+        case rook:
+            score+=eval_rook(board, piece->location,color);
+            break;
+        case bishop:
+            score+=eval_bishop(board, piece->location, color);
+            break;
+        case king:
+            score+=eval_king(board,piece->location,color);
+            break;
+            
+        default:
+            break;
+    }
+    
+    return score;
+}
+//counts bits set
+static int NumberOfSetBits(int i)
+{
+    i = i - ((i >> 1) & 0x55555555);
+    i = (i & 0x33333333) + ((i >> 2) & 0x33333333);
+    return (((i + (i >> 4)) & 0x0F0F0F0F) * 0x01010101) >> 24;
+}
+static int kingAttacked(ChessBoard* board,PieceInfo* piece,int enemyAttackMap[], int myAttackMap[]){
+    int score=0;
+    int direction=piece->color==WHITE?-1:1;
+    
+    int attackedIndex=0;
+    int attackedCount=0;
+    int kingIndex=piece->location;
+
+    attackedIndex=kingIndex+31*direction;
+    if(IS_ON_BOARD(attackedIndex)){
+        
+    }
+    attackedIndex=kingIndex+32*direction;
+    if(IS_ON_BOARD(attackedIndex)){
+        
+    }
+    attackedIndex=kingIndex+33*direction;
+    if(IS_ON_BOARD(attackedIndex)){
+        
+    }
+    
+    
+    attackedIndex=kingIndex+1*direction;
+    if(IS_ON_BOARD(attackedIndex)&&enemyAttackMap[attackedIndex]!=0){
+        attackedCount++;
+        //only king defending
+        if((myAttackMap[attackedIndex]&0x3FFF)==0x00){
+            attackedCount++;
+        }
+        
+    }
+    attackedIndex=kingIndex-1*direction;
+    if(IS_ON_BOARD(attackedIndex)&&enemyAttackMap[attackedIndex]!=0){
+        attackedCount++;
+        //only king defending
+        if((myAttackMap[attackedIndex]&0x3FFF)==0x00){
+            attackedCount++;
+        }
+        
+    }
+    attackedIndex=kingIndex-15*direction;
+    if(IS_ON_BOARD(attackedIndex)&&enemyAttackMap[attackedIndex]!=0){
+        attackedCount++;
+        //only king defending
+        if((myAttackMap[attackedIndex]&0x3FFF)==0x00){
+            attackedCount++;
+        }
+        
+    }
+    attackedIndex=kingIndex-16*direction;
+    if(IS_ON_BOARD(attackedIndex)&&enemyAttackMap[attackedIndex]!=0){
+        attackedCount++;
+        //only king defending
+        if((myAttackMap[attackedIndex]&0x3FFF)==0x00){
+            attackedCount++;
+        }
+        
+    }
+    attackedIndex=kingIndex-17*direction;
+    if(IS_ON_BOARD(attackedIndex)&&enemyAttackMap[attackedIndex]!=0){
+        attackedCount++;
+        //only king defending
+        if((myAttackMap[attackedIndex]&0x3FFF)==0x00){
+            attackedCount++;
+        }
+        
+    }
+    //directly in front
+    attackedIndex=kingIndex+15*direction;
+    if(IS_ON_BOARD(attackedIndex)&&enemyAttackMap[attackedIndex]!=0){
+        attackedCount++;
+        //only king defending
+        if((myAttackMap[attackedIndex]&0x3FFF)==0x00){
+            attackedCount++;
+        }
+        //no own piece there
+        if(!board->tiles[attackedIndex]||board->tiles[attackedIndex]->color!=piece->color){
+            attackedCount++;
+        }
+    }
+    attackedIndex=kingIndex+16*direction;
+    if(IS_ON_BOARD(attackedIndex)&&enemyAttackMap[attackedIndex]!=0){
+        attackedCount++;
+        //only king defending
+        if((myAttackMap[attackedIndex]&0x3FFF)==0x00){
+            attackedCount++;
+        }
+        //no own piece there
+        if(!board->tiles[attackedIndex]||board->tiles[attackedIndex]->color!=piece->color){
+            attackedCount++;
+        }
+    }
+    attackedIndex=kingIndex+17*direction;
+    if(IS_ON_BOARD(attackedIndex)&&enemyAttackMap[attackedIndex]!=0){
+        attackedCount++;
+        //only king defending
+        if((myAttackMap[attackedIndex]&0x3FFF)==0x00){
+            attackedCount++;
+        }
+        //no own piece there
+        if(!board->tiles[attackedIndex]||board->tiles[attackedIndex]->color!=piece->color){
+            attackedCount++;
+        }
+    }
+    
+    score=KING_ATTACK_EVAL[attackedCount];
+    return -score;
+}
+static int kingDefense(ChessBoard* board,PieceInfo* piece,int enemyAttackMap[], int myAttackMap[]){
+    int score=0;
+    int kingIndex;
+    int direction=piece->color==WHITE?-1:1;
+    
+    //pawn left of king
+    if(IS_ON_BOARD(kingIndex+direction*0x11)&&
+       board->tiles[kingIndex+direction*0x11]&&
+       board->tiles[kingIndex+direction*0x11]->piece==pawn){
+        score+=5;    
+    }else if(IS_ON_BOARD(kingIndex+direction*0x21)&&
+       board->tiles[kingIndex+direction*0x21]&&
+            board->tiles[kingIndex+direction*0x21]->piece==pawn){
+        score-=10;
+    }else{
+        score-=20;
+    }
+    //front
+    if(IS_ON_BOARD(kingIndex+direction*0x10)&&
+       board->tiles[kingIndex+direction*0x10]&&
+       board->tiles[kingIndex+direction*0x10]->piece==pawn){
+        score+=5;    
+    }else if(IS_ON_BOARD(kingIndex+direction*0x20)&&
+             board->tiles[kingIndex+direction*0x20]&&
+             board->tiles[kingIndex+direction*0x20]->piece==pawn){
+        score-=5;
+    }else{
+        score-=20;
+    }
+    if(IS_ON_BOARD(kingIndex+direction*0x0F)&&
+       board->tiles[kingIndex+direction*0x0F]&&
+       board->tiles[kingIndex+direction*0x0F]->piece==pawn){
+        score+=5;    
+    }else if(IS_ON_BOARD(kingIndex+direction*0x1F)&&
+             board->tiles[kingIndex+direction*0x1F]&&
+             board->tiles[kingIndex+direction*0x1F]->piece==pawn){
+        score-=5;
+    }else{
+        score-=20;
+    }
+    
+    //TODO: king on queenside check for fianchetto bishop
+       
+    return score;
+}
+
+int drawByMaterial(ChessBoard* board, Color color){
+    
+    
+    if(board->playerScores[color].pieceCounts[pawn]!=0||
+       board->playerScores[color].pieceCounts[rook]!=0||
+       board->playerScores[color].pieceCounts[queen]!=0||
+       board->playerScores[color].pieceCounts[bishop]>1||
+       board->playerScores[color].pieceCounts[knight]>2){
+        return 0;
+    }
+    if(board->playerScores[color].pieceCounts[bishop]>0 && board->playerScores[color].pieceCounts[knight]>0){
+        return 0;
+    }
+    return 1;
+}
+
+
+int EvaluateComplex(ChessBoard* board){
+    if(drawByMaterial(board, BLACK)&&drawByMaterial(board, WHITE)){
+        return 0;
+    }
+    int score=0;
+    //if probing is not an error (NOT IN TABLE)
+    if(!probeEvalTable(&board->zobrist, &score)){
+        return score;
+    }
+    
+    int wscore=0;
+    int bscore=0;
+    
+    memset(pawnsOnFile,0,2*sizeof(int)*8);
+    
+    wscore=eval_trapped(board,WHITE);
+    bscore=eval_trapped(board,BLACK);
+    
+    for(int i=0;i<16;i++){
+        if(board->whiteToSquare[i].location!=NO_LOCATION)
+            wscore+=evaluatePiece(board, &board->whiteToSquare[i], WHITE);
+        if(board->blackToSquare[i].location!=NO_LOCATION)
+            bscore+=evaluatePiece(board, &board->blackToSquare[i], BLACK);
+    }
+    
+    int wAttackMap[128];
+    int bAttackMap[128];
+    memset(wAttackMap,0,sizeof(int)*128);
+    memset(bAttackMap,0,sizeof(int)*128);
+    generateAttackMap(board, WHITE, wAttackMap);
+    generateAttackMap(board, BLACK, bAttackMap);
+    
+    int wSafe=0;
+    int wUnsafe=0;
+    int bSafe=0;
+    int bUnsafe=0;
+    for(int i=0;i<128;i++){
+        int wBitsSet=NumberOfSetBits(wAttackMap[i]);
+        int bBitsSet=NumberOfSetBits(bAttackMap[i]);
+        if(wBitsSet>0&&bBitsSet==0){
+            //safe to go there
+            wSafe++;
+        }else if(wBitsSet==0&&bBitsSet>0){
+            bSafe++;
+        }else{
+            wUnsafe++;
+            bUnsafe++;
+        }
+    }
+    wscore+=(2*wSafe+wUnsafe);
+    bscore+=(2*bSafe+bUnsafe);
+    
+    wscore+=kingAttacked(board,&board->whiteToSquare[0],bAttackMap,wAttackMap);
+    bscore+=kingAttacked(board,&board->blackToSquare[0],wAttackMap,bAttackMap);
+    
+    wscore+=kingDefense(board,&board->whiteToSquare[0],bAttackMap,wAttackMap);
+    bscore+=kingDefense(board,&board->blackToSquare[0],wAttackMap,bAttackMap);
+    
+    
+    //endgame pawns are more worth
+    if(board->phase==EndGame){
+        bscore+=board->playerScores[BLACK].pieceCounts[pawn]*20;
+        wscore+=board->playerScores[WHITE].pieceCounts[pawn]*20;
+    }
+    
+    
+    wscore+=board->playerScores[WHITE].totalScores;
+    bscore+=board->playerScores[BLACK].totalScores;
+    
+    
+    if(board->colorToPlay==WHITE){
+        int endscore=wscore-bscore;
+        if(board->repetitionMoves>20)
+            endscore=(120-board->repetitionMoves)*endscore/100;
+        
+        addToEvalTable(&board->zobrist, endscore);
+        return endscore;
+    }else{
+         int endscore=bscore-wscore;
+        if(board->repetitionMoves>20)
+            endscore=(120-board->repetitionMoves)*endscore/100;
+        
+        addToEvalTable(&board->zobrist, endscore);
+        return endscore;
+    }
+    return 0;    
 }
 

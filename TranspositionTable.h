@@ -22,7 +22,8 @@ typedef enum Bound{
     BOUND_LOWER
 }Bound;
 
-ChError initTable(long size);
+ChError initHashTable(long size);
+ChError initRepetitionTable(long size);
 u_int64_t getZobristHash(ChessBoard* board);
 
 ChError addKeyToTable(u_int64_t zobrist, int depth, int score, Bound bound,Move move);
@@ -33,14 +34,22 @@ ChError removePieceZobrist(u_int64_t* zobrist,int location,PIECE piece, Color co
 ChError switchColorZobrist(u_int64_t* zobrist);
 ChError setEnPassantZobrist(u_int64_t* zobrist, int oldEnPassant, int newEnPassant);
 ChError updateCastleRightZobrist(u_int64_t* zobrist, int nr); //KQkq
-ChError clearTable(void);
+
+ChError clearHashTable(void);
+void clearRepetitionTable(void);
 
 ChError incrementRepetitionTable(u_int64_t* zobrist);
 ChError decrementRepetitionTable(u_int64_t* zobrist);
 
-long probeRepetitionTable(u_int64_t* zobrist);
+int probeRepetitionTable(u_int64_t* zobrist);
 
 void freeTable(void);
+
+
+ChError initEvalTable(long size);
+ChError clearEvalTable();
+ChError probeEvalTable(u_int64_t* zobrist, int* eval);
+ChError addToEvalTable(u_int64_t* zobrist, int eval);
 
 
 #endif
