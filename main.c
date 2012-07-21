@@ -19,9 +19,9 @@ int main (int argc, const char * argv[])
     
     Game newGame;
     ChError hr;
-    initHashTable(1048576*16);
-    initRepetitionTable(1048576);
-    initEvalTable(1048576*4);
+    initHashTable(65536*2*2*2*2*2*2);
+    initRepetitionTable(65536);
+    initEvalTable(65536*2*2*2*2*2*2);
     
     
     newGame.isRunning=1;

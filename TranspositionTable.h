@@ -17,9 +17,9 @@
 
 
 typedef enum Bound{
-    BOUND_EXACT,
-    BOUND_UPPER,
-    BOUND_LOWER
+    HASH_EXACT,
+    HASH_ALPHA,
+    HASH_BETA
 }Bound;
 
 ChError initHashTable(long size);

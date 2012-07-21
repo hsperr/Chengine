@@ -1581,12 +1581,12 @@ static int getMoveScore(Move* m1, SearchInformation* info){
         }
         
         if(m1->promote)
-            score+=20;
+            score+=40;
         
     }
     
     if(info->history)
-        score+=info->history[m1->from][m1->to]*100;
+        score+=info->history[m1->from][m1->to]+90;
     return score;
 }
 

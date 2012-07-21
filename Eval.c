@@ -216,9 +216,9 @@ static int eval_knight(ChessBoard* board, int index, Color color){
         int direction=color==WHITE?-1:1;
         //defendet twice
         int defendedLeft=board->tiles[index-0x11*direction]&&(board->tiles[index-0x11*direction]->color==color&&
-                          board->tiles[index-0x11*direction]->piece==pawn);
+                                                              board->tiles[index-0x11*direction]->piece==pawn);
         int defendedRight=board->tiles[index-0x0F*direction]&&(board->tiles[index-0x0F*direction]->color==color&&
-                           board->tiles[index-0x0F*direction]->piece==pawn);
+                                                               board->tiles[index-0x0F*direction]->piece==pawn);
         if(defendedLeft&&defendedRight){
             score+=2*outPost;
         }else if(defendedLeft){
@@ -231,7 +231,7 @@ static int eval_knight(ChessBoard* board, int index, Color color){
     if(color==WHITE){
         score+=TROPISM_KNIGHT[distance(board->blackToSquare[0].location, index)];
     }else{
-         score+=TROPISM_KNIGHT[distance(board->whiteToSquare[0].location, index)];
+        score+=TROPISM_KNIGHT[distance(board->whiteToSquare[0].location, index)];
     }
     return score;
 }
@@ -269,7 +269,7 @@ static int eval_rook(ChessBoard* board, int index, Color color){
     }else if(pawnsOnFile[color][boardFile(index)]==0 && pawnsOnFile[color==WHITE?BLACK:WHITE][boardFile(index)]==0){
         score+=ROOK_OPEN;
     }
- 
+    
     return score;
 }
 static int eval_queen(ChessBoard* board, int index, Color color){
@@ -332,7 +332,7 @@ static int kingAttacked(ChessBoard* board,PieceInfo* piece,int enemyAttackMap[],
     int attackedIndex=0;
     int attackedCount=0;
     int kingIndex=piece->location;
-
+    
     attackedIndex=kingIndex+31*direction;
     if(IS_ON_BOARD(attackedIndex)){
         
@@ -444,8 +444,8 @@ static int kingDefense(ChessBoard* board,PieceInfo* piece,int enemyAttackMap[], 
        board->tiles[kingIndex+direction*0x11]->piece==pawn){
         score+=5;    
     }else if(IS_ON_BOARD(kingIndex+direction*0x21)&&
-       board->tiles[kingIndex+direction*0x21]&&
-            board->tiles[kingIndex+direction*0x21]->piece==pawn){
+             board->tiles[kingIndex+direction*0x21]&&
+             board->tiles[kingIndex+direction*0x21]->piece==pawn){
         score-=10;
     }else{
         score-=20;
@@ -475,7 +475,7 @@ static int kingDefense(ChessBoard* board,PieceInfo* piece,int enemyAttackMap[], 
     }
     
     //TODO: king on queenside check for fianchetto bishop
-       
+    
     return score;
 }
 
@@ -519,51 +519,52 @@ int EvaluateComplex(ChessBoard* board){
             wscore+=evaluatePiece(board, &board->whiteToSquare[i], WHITE);
         if(board->blackToSquare[i].location!=NO_LOCATION)
             bscore+=evaluatePiece(board, &board->blackToSquare[i], BLACK);
+        
     }
     
     /*int wAttackMap[128];
-    int bAttackMap[128];
-    memset(wAttackMap,0,sizeof(int)*128);
-    memset(bAttackMap,0,sizeof(int)*128);
-    generateAttackMap(board, WHITE, wAttackMap);
-    generateAttackMap(board, BLACK, bAttackMap);
-    
-    int wSafe=0;
-    int wUnsafe=0;
-    int bSafe=0;
-    int bUnsafe=0;
-    for(int i=0;i<128;i++){
-        int wBitsSet=NumberOfSetBits(wAttackMap[i]);
-        int bBitsSet=NumberOfSetBits(bAttackMap[i]);
-        if(wBitsSet>0&&bBitsSet==0){
-            //safe to go there
-            wSafe++;
-        }else if(wBitsSet==0&&bBitsSet>0){
-            bSafe++;
-        }else{
-            wUnsafe++;
-            bUnsafe++;
-        }
-    }
-    wscore+=(2*wSafe+wUnsafe);
-    bscore+=(2*bSafe+bUnsafe);
-    
-    wscore+=kingAttacked(board,&board->whiteToSquare[0],bAttackMap,wAttackMap);
-    bscore+=kingAttacked(board,&board->blackToSquare[0],wAttackMap,bAttackMap);
-    
-    wscore+=kingDefense(board,&board->whiteToSquare[0],bAttackMap,wAttackMap);
-    bscore+=kingDefense(board,&board->blackToSquare[0],wAttackMap,bAttackMap);
-    
-    
-    //endgame pawns are more worth
-    if(board->phase==EndGame){
-        bscore+=board->playerScores[BLACK].pieceCounts[pawn]*20;
-        wscore+=board->playerScores[WHITE].pieceCounts[pawn]*20;
-    }
+     int bAttackMap[128];
+     memset(wAttackMap,0,sizeof(int)*128);
+     memset(bAttackMap,0,sizeof(int)*128);
+     generateAttackMap(board, WHITE, wAttackMap);
+     generateAttackMap(board, BLACK, bAttackMap);
+     
+     int wSafe=0;
+     int wUnsafe=0;
+     int bSafe=0;
+     int bUnsafe=0;
+     for(int i=0;i<128;i++){
+     int wBitsSet=NumberOfSetBits(wAttackMap[i]);
+     int bBitsSet=NumberOfSetBits(bAttackMap[i]);
+     if(wBitsSet>0&&bBitsSet==0){
+     //safe to go there
+     wSafe++;
+     }else if(wBitsSet==0&&bBitsSet>0){
+     bSafe++;
+     }else{
+     wUnsafe++;
+     bUnsafe++;
+     }
+     }
+     wscore+=(2*wSafe+wUnsafe);
+     bscore+=(2*bSafe+bUnsafe);
+     
+     wscore+=kingAttacked(board,&board->whiteToSquare[0],bAttackMap,wAttackMap);
+     bscore+=kingAttacked(board,&board->blackToSquare[0],wAttackMap,bAttackMap);
+     
+     wscore+=kingDefense(board,&board->whiteToSquare[0],bAttackMap,wAttackMap);
+     bscore+=kingDefense(board,&board->blackToSquare[0],wAttackMap,bAttackMap);
+     
+     
+     //endgame pawns are more worth
+     if(board->phase==EndGame){
+     bscore+=board->playerScores[BLACK].pieceCounts[pawn]*20;
+     wscore+=board->playerScores[WHITE].pieceCounts[pawn]*20;
+     }*/
     
     
     wscore+=board->playerScores[WHITE].totalScores;
-    bscore+=board->playerScores[BLACK].totalScores;*/
+    bscore+=board->playerScores[BLACK].totalScores;
     
     
     if(board->colorToPlay==WHITE){
@@ -574,7 +575,7 @@ int EvaluateComplex(ChessBoard* board){
         addToEvalTable(&board->zobrist, endscore);
         return endscore;
     }else{
-         int endscore=bscore-wscore;
+        int endscore=bscore-wscore;
         if(board->repetitionMoves>20)
             endscore=(120-board->repetitionMoves)*endscore/100;
         

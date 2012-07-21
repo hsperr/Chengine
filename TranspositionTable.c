@@ -45,21 +45,23 @@ typedef struct EvalEntry{
 EvalEntry* evalTable;
 long evalTableSize=0;
 
+
+ChError clearEvalTable(){
+    memset(repetitionTable,0,sizeof(RepEntry)*evalTableSize);
+    return ChError_OK;
+}
 ChError initEvalTable(long size){
     evalTableSize=size;
     
     evalTable=malloc(size*sizeof(EvalEntry));
     if(!evalTable)
         return ChError_Resources;
-    memset(repetitionTable,0,sizeof(EvalEntry)*evalTableSize);
+    clearEvalTable();
     
     return ChError_OK;
 
 }
-ChError clearEvalTable(){
-    memset(repetitionTable,0,sizeof(RepEntry)*repetitionTableSize);
-    return ChError_OK;
-}
+
 
 ChError probeEvalTable(u_int64_t* zobrist, int* eval){
     u_int64_t index=*(zobrist)%evalTableSize;
@@ -265,13 +267,13 @@ ChError probe(u_int64_t zobrist, int depth, int* alpha, int* beta, int* score, M
         //we found that position before
         if(entry->depth>=depth){
             switch (entry->bound){
-                case 0:
+                case HASH_EXACT:
                     *score=entry->score;
                     return ChError_OK;
-                case 1: //lower
+                case HASH_ALPHA: //lower
                     *alpha = max(*alpha, entry->score);
                     break;
-                case 2: //upper
+                case HASH_BETA: //upper
                     *beta = min(*beta, entry->score);
                     break;
             }     

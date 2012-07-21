@@ -155,6 +155,7 @@ typedef struct SearchInformation{
     int cutOffs;
     int globalDepth;
     int currentDepth;
+    char isProlonged;
     
     
     MoveList* list; //global move list 
