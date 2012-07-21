@@ -14,6 +14,7 @@
 #include "OpeningBook.h"
 #include "Eval.h"
 
+
 ChError doAiMove(ChessBoard* board, Properties* aiProperties);
 ChError doAi(ChessBoard* board, Properties* player);
 

@@ -145,6 +145,27 @@ typedef struct Game{
     Properties Player[2];
 }Game;
 
+typedef struct SearchInformation{
+    ChessBoard* board;
+    //statistics
+    int allMovesCalculated;
+    int movesPerIterationCalculated;
+    int quietNodes;
+    int tableLookUpsFound;
+    int cutOffs;
+    int globalDepth;
+    int currentDepth;
+    
+    
+    MoveList* list; //global move list 
+    int history[128][128];
+    Move killerMoves[200][2];
+    
+    
+    Move* bestMoves;     //principal variation
+    int* bestMoveScores;
+}SearchInformation;
+
 ChError addToMoveList(MoveList* moveList, Move* move);
 void freeMoveList(MoveList* moveList);
 void printMoveList(MoveList* moveList);
