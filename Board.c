@@ -1537,82 +1537,68 @@ ChError generateMoves(ChessBoard* board,enum Color color, MoveList* moveList){
     return ChError_OK;
 }
 
-typedef struct SortingInfo{
-    ChessBoard* board;
-    int* history;
-}SortingInfo;
 
-static int compareMoves(void* b, const void* mv1, const void* mv2){
+static int getMoveScore(Move* m1, SearchInformation* info){
+    int score=0;
+    
+    
+    //capture
+    if(info->board->tiles[m1->to]!=NULL){
+        score+=getPieceScore(info->board->tiles[m1->to]->piece)*100000;
+        score-=getPieceScore(info->board->tiles[m1->from]->piece);
+    }
+    else{
+        if(info->killerMoves[info->currentDepth][0].from!=0&&
+           info->killerMoves[info->currentDepth][0].to!=0&&
+           equalMoves(&info->killerMoves[info->currentDepth][0], m1)){
+            score+=100;
+        }
+        if(info->killerMoves[info->currentDepth][1].from!=0&&
+           info->killerMoves[info->currentDepth][1].to!=0&&
+           equalMoves(&info->killerMoves[info->currentDepth][1], m1)){
+            score+=100;
+        }
+        switch(info->board->tiles[m1->from]->piece){
+            case pawn:
+                score+=5;
+                break;
+            case queen:
+                score+=6;
+                break;
+            case rook:
+                score+=8;
+                break;
+            case knight:
+                score+=7;
+                break;
+            case bishop:
+                score+=9;
+                break;
+            case king:
+                score+=10;
+                break;
+                
+        }
+        
+        if(m1->promote)
+            score+=20;
+        
+    }
+    
+    if(info->history)
+        score+=info->history[m1->from][m1->to]*100;
+    return score;
+}
+
+static int compareMoves(void* b,const void* mv1, const void* mv2){
     
     Move* move1=(Move*)mv1;
     Move* move2=(Move*)mv2;
-    SortingInfo* info =(SortingInfo*)b;
+    SearchInformation* info =(SearchInformation*)b;
     
-    int move1Score=0;
-    int move2Score=0;
+    int move1Score=getMoveScore(move1, info);
+    int move2Score=getMoveScore(move2, info);
     
-    if(info->board->tiles[move1->to]!=NULL){
-        move1Score+=getPieceScore(info->board->tiles[move1->to]->piece)*10000;
-        move1Score-=getPieceScore(info->board->tiles[move1->from]->piece);
-    }else{
-        switch(info->board->tiles[move1->from]->piece){
-            case pawn:
-                move1Score+=10;
-                break;
-            case queen:
-                move1Score+=9;
-                break;
-            case rook:
-                move1Score+=7;
-                break;
-            case knight:
-                move1Score+=6;
-                break;
-            case bishop:
-                move1Score+=5;
-                break;
-            case king:
-                move1Score+=4;
-                break;
-                
-        }
-        
-        if(move1->promote)
-            move1Score+=10;
-        if(info->history)
-            move1Score+=info->history[move1->from+128*move1->to]*5;
-    }
-    if(info->board->tiles[move2->to]!=NULL){
-        move2Score+=getPieceScore(info->board->tiles[move2->to]->piece)*10000;
-        move2Score-=getPieceScore(info->board->tiles[move2->from]->piece);
-    }else{
-        switch(info->board->tiles[move2->from]->piece){
-            case pawn:
-                move2Score+=10;
-                break;
-            case queen:
-                move2Score+=9;
-                break;
-            case rook:
-                move2Score+=7;
-                break;
-            case knight:
-                move2Score+=6;
-                break;
-            case bishop:
-                move2Score+=5;
-                break;
-            case king:
-                move2Score+=4;
-                break;
-                
-        }
-        if(move2->promote)
-            move2Score+=10;
-        
-        if(info->history)
-         move2Score+=info->history[move2->from+128*move2->to]*5;
-    }
     
     if(move2Score>move1Score){
         return 1;
@@ -1623,48 +1609,82 @@ static int compareMoves(void* b, const void* mv1, const void* mv2){
 }
 
 
-ChError generateSortedMoves(ChessBoard* board,enum Color color, MoveList* moveList, int history[][128]){
+ChError generateSortedMoves(ChessBoard* board,enum Color color, MoveList* moveList, SearchInformation* info){
     ChError hr;
     int nextFree=moveList->nextFree;
     hr=generateMoves(board, color, moveList);
     if(hr)
         return hr;
     
-    SortingInfo info;
-    info.board=board;
-    info.history=NULL;
-
+    
     Move* move=&moveList->array[nextFree];
-    qsort_r(move, moveList->nextFree-nextFree, sizeof(Move), &info, &compareMoves);
+    qsort_r(move, moveList->nextFree-nextFree, sizeof(Move), info, &compareMoves);
     
-    //printBoardE(board);
-    //printMoveListFromOffset(moveList, nextFree);
+    //  printBoardE(board);
+    //  printMoveListFromOffset(moveList, nextFree);
     
-
+    
     return hr;
 }
+static int compareCaptures(void* b, const void* mv1, const void* mv2){
+    
+    Move* move1=(Move*)mv1;
+    Move* move2=(Move*)mv2;
+    SearchInformation* info =(SearchInformation*)b;
+    
+    int m1score=-110;
+    int m2score=-110;
+    
+    if(info->board->tiles[move1->to]){
+        m1score+=getPieceScore(info->board->tiles[move1->to]->piece)*100000;
+        m1score-=getPieceScore(info->board->tiles[move1->from]->piece);
+    }
+    if(move1->promote!=0)
+        m1score+=110;
+    if(info->board->tiles[move2->to]){
+        m2score+=getPieceScore(info->board->tiles[move2->to]->piece)*100000;
+        m2score-=getPieceScore(info->board->tiles[move2->from]->piece);
+    }
+    if(move2->promote!=0)
+        m2score+=110;
+    
+    
+    
+    if(m2score>m1score){
+        return 1;
+    }else if(m2score<m1score){
+        return -1;
+    }
+    return 0;
+}
 
-ChError generateCaptures(ChessBoard* board,enum Color color, MoveList* moveList){
+ChError generateCaptures(ChessBoard* board,enum Color color, MoveList* moveList, SearchInformation* info){
     ChError hr;
     int nextFree=moveList->nextFree;
-    hr=generateSortedMoves(board, color, moveList,NULL);
+    hr=generateMoves(board, color, moveList);
     if(hr)
         return hr;
-
-    int capturesMoves=0;
-    for(int i=nextFree;i<moveList->nextFree;i++){
-        if(board->tiles[moveList->array[i].to])
-            capturesMoves++;
-        else
+    
+    
+    Move* move=&moveList->array[nextFree];
+    qsort_r(move, moveList->nextFree-nextFree, sizeof(Move), info, &compareCaptures);
+    
+    int capturesMoves=nextFree;
+    for(;capturesMoves<moveList->nextFree;capturesMoves++){
+        if(!board->tiles[moveList->array[capturesMoves].to]&&
+           !moveList->array[capturesMoves].promote){
             break;
+        }
     }
     
-  //  printMoveListFromOffset(moveList,nextFree);
-       
-    moveList->nextFree=nextFree+capturesMoves;
+    //  printBoardE(board);
+    //  printMoveListFromOffset(moveList, nextFree);
+    
+    moveList->nextFree=capturesMoves;
     
     return hr;
 }
+
 int equalMoves(Move* move1, Move* move2){
     return move1->from==move2->from&&move1->to==move2->to&&move1->promote==move2->promote;
 }

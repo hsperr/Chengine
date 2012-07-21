@@ -25,8 +25,8 @@ ChError readFENString(ChessBoard* board, char* fen);
 void printBoardE(ChessBoard* board);
 
 ChError generateMoves(ChessBoard* board,enum Color color, MoveList* moveList);
-ChError generateSortedMoves(ChessBoard* board,enum Color color, MoveList* moveList, int history[][128]);
-ChError generateCaptures(ChessBoard* board,enum Color color, MoveList* moveList);
+ChError generateSortedMoves(ChessBoard* board,enum Color color, MoveList* moveList, SearchInformation* info);
+ChError generateCaptures(ChessBoard* board,enum Color color, MoveList* moveList, SearchInformation* info);
 ChError generateMoveForPosition(ChessBoard* board,const PieceInfo* pieceInfo, MoveList* moveList, int usePins, Pin* pinnedPieces);
 void generateAttackMap(ChessBoard* board, enum Color attackerColor, int* attackMap);
 
