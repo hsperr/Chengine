@@ -62,11 +62,11 @@ const char useHashTables=1;
 const char usePVS=1;
 const char useNullMoves=1;
 const char useAspiration=1;
-const char useOpeningTable=1;
+const char useOpeningTable=0;
 const char useComplexEvaluation=1;
 
 const int ASPIRATION_SIZE=18;
-const int MAX_DEPTH=22;
+const int MAX_DEPTH=100;
 const char NULL_DEPTH=0;
 
 const int TIME_CHECK_INTERVAL=40000;
@@ -122,6 +122,13 @@ static int quiscent(ChessBoard* board,int alpha, int beta, SearchInformation* in
         info->quietNodes++;
         History h={0};
         Move* move =&list->array[i];
+        
+        if(board->tiles[move->to]&&(alpha>score+getPieceScore(board->tiles[move->to]->piece)-getPieceScore(board->tiles[move->from]->piece)+900)){
+            list->nextFree=offset;
+            info->currentDepth--;
+            return alpha;
+        }
+       
         
         doMove(board,move,&h);
         score=-quiscent(board,-beta,-alpha,info);
@@ -281,7 +288,7 @@ static int NegaScoutRoot(int alpha, int beta, int depth, int allowNull, SearchIn
                 globalPV[i]=localPV[i];
             }
             
-            if(alpha>=beta&&useAlphaBeta){
+            if(alpha>=beta&&useAlphaBeta||alpha>=MATE_SCORE){
                 info->cutOffs++;
                 bound=HASH_ALPHA;
                 
@@ -400,7 +407,7 @@ ChError doAi(ChessBoard* board, Properties* player){
     
     long time=clock();
     int depth =1;
-    for(;!stopSearch&&depth<=player->depth;depth++){
+    for(;!stopSearch&&depth<=player->depth&&depth<MAX_DEPTH;depth++){
         info.globalDepth=depth;
         lastSerachesBestMove=globalPV[depth-1];
         int bestScore=NegaScoutRoot(alpha, beta, depth,0, &info);
@@ -434,7 +441,7 @@ ChError doAi(ChessBoard* board, Properties* player){
         char charMove[6];    
         
         //ply score time nodes pv
-        printf("%d %d %f %d ",depth,info.bestMoveScores[depth],(((float)(clock()-startTime))/CLOCKS_PER_SEC),info.movesPerIterationCalculated+info.quietNodes);
+        printf("%d %d %f %d ",depth,info.bestMoveScores[depth],(float)(clock()-startTime)/CLOCKS_PER_SEC,info.movesPerIterationCalculated+info.quietNodes);
         for(int i=depth;i>=max(1,depth-20);i--){
             moveToChar(&info.bestMoves[i], charMove);
             printf("%s ",charMove);

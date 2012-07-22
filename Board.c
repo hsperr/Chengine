@@ -1088,7 +1088,7 @@ ChError doMove(ChessBoard* board, Move* move, History* history){
     
     incrementRepetitionTable(&board->zobrist);
     
-    if(history->capturedPiece==NULL&&board->tiles[move->to]!=pawn)
+    if(history->capturedPiece==NULL&&board->tiles[move->to]->piece!=pawn)
         board->repetitionMoves++;
     else
         board->repetitionMoves=0;
@@ -1542,6 +1542,7 @@ static int getMoveScore(Move* m1, SearchInformation* info){
     int score=0;
     
     
+    
     //capture
     if(info->board->tiles[m1->to]!=NULL){
         score+=getPieceScore(info->board->tiles[m1->to]->piece)*100000;
@@ -1560,22 +1561,22 @@ static int getMoveScore(Move* m1, SearchInformation* info){
         }
         switch(info->board->tiles[m1->from]->piece){
             case pawn:
-                score+=5;
+                score+=14;
                 break;
             case queen:
-                score+=6;
+                score+=18;
                 break;
             case rook:
-                score+=8;
+                score+=17;
                 break;
             case knight:
-                score+=7;
+                score+=15;
                 break;
             case bishop:
-                score+=9;
+                score+=15;
                 break;
             case king:
-                score+=10;
+                score+=20;
                 break;
                 
         }

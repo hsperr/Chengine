@@ -28,7 +28,7 @@ int main (int argc, const char * argv[])
     
     newGame.Player[WHITE].depth=200;
     newGame.Player[WHITE].timelimit=4000000;
-    newGame.Player[WHITE].isAi=1;
+    newGame.Player[WHITE].isAi=0;
     newGame.Player[WHITE].useOpeningTable=1;
     
     newGame.Player[BLACK].depth=200;
@@ -41,7 +41,7 @@ int main (int argc, const char * argv[])
         printError(hr);
     }
 
-    readFENString(&newGame.board, "1nk1r1r1/pp2n1pp/4p3/q2pPp1N/b1pP1P2/B1P2R2/2P1B1PP/R2Q2K1 w - - 0 0");
+    //readFENString(&newGame.board, "3r1k2/4npp1/1ppr3p/p6P/P2PPPP1/1NR5/5K2/2R5 w - - 0 0");
     //printf("Evaluate: %d\n",evaluate(&newGame.board));
     printBoardE(&newGame.board);
     while(newGame.isRunning){
