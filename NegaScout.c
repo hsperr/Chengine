@@ -210,6 +210,7 @@ static int NegaScoutRoot(int alpha, int beta, int depth, int allowNull, SearchIn
                 // depth-=4;
                 // if(depth<=0)
                 //return quiscent(info->board, alpha, beta, info);
+                info->nullCutOffs++;
                 return eval;
             }
         }
@@ -222,21 +223,56 @@ static int NegaScoutRoot(int alpha, int beta, int depth, int allowNull, SearchIn
         if((hr=probe(info->board->zobrist, depth,&alpha,&beta, &localAlpha,&hashMove))){
             //not in table
         }else{
-            info->tableLookUpsFound++;//exact hit
-            info->bestMoves[depth]=hashMove;
-            info->bestMoveScores[depth]=localAlpha;
+            info->hashExactCutoffs++;//exact hit
             
             return localAlpha;
         }
         //try hashmove first
-        if(hashMove.from!=0||hashMove.to!=0){
-            addToMoveList(info->list, &hashMove);
+        if(hashMove.value!=0){
+            History h={0};
+            Move* move = &hashMove;
+            doMove(info->board, move, &h);
+            
+            
+            if(usePVS){
+                localAlpha=-NegaScoutRoot(-pvsBeta, -alpha, depth-1,useNullMoves, info);
+                if(localAlpha>alpha&&localAlpha<beta){
+                    info->pvsFail++;
+                    localAlpha=-NegaScoutRoot(-beta, -alpha, depth-1,useNullMoves, info);
+                }
+            }else{
+                localAlpha=-NegaScoutRoot(-beta, -alpha, depth-1,useNullMoves, info); 
+            }
+            
+            undoMove(info->board, move, &h);
+            info->currentDepth=depth;
+            if(alpha<localAlpha){
+                bound=HASH_EXACT;
+                alpha=localAlpha;
+                if(((alpha>=beta||alpha>=MATE_SCORE)&&useAlphaBeta)){
+                    info->hashMoveCutOffs++;
+                    bound=HASH_ALPHA;
+                    
+                    if(!info->board->tiles[move->to]){
+                        info->history[move->from][move->to]+=depth*depth;
+                        //noncapture add killer
+                        if(info->killerMoves[depth][0].value==move->value){
+                            info->killerMoves[depth][1]=info->killerMoves[depth][0];
+                            info->killerMoves[depth][0]=*move;
+                        }
+                    }
+                    info->list->nextFree=myGlobOffset;
+                    addKeyToTable(info->board->zobrist, depth, alpha, bound,hashMove);
+                    return alpha;
+ 
+                }
+                
+            }
+            pvsBeta=alpha+1;
+            localAlpha=INIT_ALPHA;
         }
     }
-    
-    Move localPV[200]={0};
-    Move* globalPV=info->bestMoves;
-    info->bestMoves=localPV;
+
     
     hr=generateSortedMoves(info->board, info->board->colorToPlay, info->list,info);
     switch (hr){
@@ -253,22 +289,18 @@ static int NegaScoutRoot(int alpha, int beta, int depth, int allowNull, SearchIn
             printError(hr);
             break;
     }
-    if(hashMove.from!=0||hashMove.to!=0){
-        assert(equalMoves(&info->list->array[myGlobOffset],&hashMove));
-    }
+
     Move localBestMove={0};
     for(int moveNr=myGlobOffset; moveNr<info->list->nextFree&&!stopSearch;moveNr++){
         History h={0};
         Move* move = &info->list->array[moveNr];
-        /*  if((hashMove.from!=0||hashMove.to!=0)&&moveNr>myGlobOffset&&equalMoves(move, &hashMove)){
-         continue;
-         }*/
         doMove(info->board, move, &h);
         
         
         if(usePVS){
             localAlpha=-NegaScoutRoot(-pvsBeta, -alpha, depth-1,useNullMoves, info);
             if(localAlpha>alpha&&localAlpha<beta&&moveNr>myGlobOffset){
+                info->pvsFail++;
                 localAlpha=-NegaScoutRoot(-beta, -alpha, depth-1,useNullMoves, info);
             }
         }else{
@@ -280,30 +312,21 @@ static int NegaScoutRoot(int alpha, int beta, int depth, int allowNull, SearchIn
         if(alpha<localAlpha){
             bound=HASH_EXACT;
             alpha=localAlpha;
-            info->bestMoves[depth]=*move;
-            info->bestMoveScores[depth]=localAlpha;
             localBestMove=*move;
+            if(depth==info->globalDepth)
+                info->bestMove=*move;
             
-            for(int i=1;i<=depth;i++){
-                globalPV[i]=localPV[i];
-            }
-            
-            if(alpha>=beta&&useAlphaBeta||alpha>=MATE_SCORE){
+            if(((alpha>=beta||alpha>=MATE_SCORE)&&useAlphaBeta)){
                 info->cutOffs++;
                 bound=HASH_ALPHA;
                 
                 if(!info->board->tiles[move->to]){
                     info->history[move->from][move->to]+=depth*depth;
                     //noncapture add killer
-                    if(info->killerMoves[depth][0].from==0
-                       &&info->killerMoves[depth][0].to==0){
-                        info->killerMoves[depth][0]=*move;
-                    }else{
-                        if(!equalMoves(&info->killerMoves[depth][0], move)){
+                        if(info->killerMoves[depth][0].value==move->value){
                             info->killerMoves[depth][1]=info->killerMoves[depth][0];
                             info->killerMoves[depth][0]=*move;
                         }
-                    }
                 }
                 break;
             }
@@ -314,14 +337,34 @@ static int NegaScoutRoot(int alpha, int beta, int depth, int allowNull, SearchIn
         
     }
     
-    info->bestMoves=globalPV;
     info->list->nextFree=myGlobOffset;
     addKeyToTable(info->board->zobrist, depth, alpha, bound,localBestMove);
-    if(info->isProlonged)
-        info->isProlonged=0;
     return alpha;
 }
 
+void printPV_rec(ChessBoard* board, Move* move, int maxDepth){
+    if(maxDepth==0)
+        return;
+    Move hashMove={0};
+    int someval=0;
+    char moveChar[6];
+    if(move->value!=0&&isLegal(board, move)){
+        History h={0};
+        doMove(board, move, &h);
+        moveToChar(move, moveChar);
+        printf("%s ",moveChar);
+        probe(board->zobrist, 0, &someval, &someval, &someval, &hashMove);
+
+            printPV_rec(board,&hashMove,maxDepth-1);
+        undoMove(board, move, &h);
+    }
+}
+
+
+void printPV(ChessBoard* board, Move* move, int maxDepth){
+    printPV_rec(board, move, maxDepth);
+    printf("\n");
+}
 
 ChError doAi(ChessBoard* board, Properties* player){
     History h={0};
@@ -374,14 +417,9 @@ ChError doAi(ChessBoard* board, Properties* player){
     ChError hr=ChError_OK;
     SearchInformation info ={0};
     MoveList list={0};
-    Move lastSerachesBestMove={0};
-    Move globalPV[100];
-    memcpy(&globalPV, "\0", sizeof(Move)*100);
-    int globalBestScores[100];
+
     info.board=board;
     info.list=&list;
-    info.bestMoves=globalPV;
-    info.bestMoveScores=globalBestScores;
     
     hr=generateMoves(board, board->colorToPlay, &list);
     switch (hr){
@@ -400,25 +438,27 @@ ChError doAi(ChessBoard* board, Properties* player){
     
     
     timeForThisMove=max(0.1,(float)player->timelimit/(30*100-(min(10,(board->playedMoves.nextFree/2))*100)));
-    printf("#I want to take %f sec for this move.\n", timeForThisMove);
     startTime=clock();
     stopSearch=0;
     nextTimeCheck=TIME_CHECK_INTERVAL;
     
     long time=clock();
     int depth =1;
+    Move bestFinishedMove;
+    int overallBestScore;
     for(;!stopSearch&&depth<=player->depth&&depth<MAX_DEPTH;depth++){
         info.globalDepth=depth;
-        lastSerachesBestMove=globalPV[depth-1];
         int bestScore=NegaScoutRoot(alpha, beta, depth,0, &info);
         
+        if(stopSearch)
+            break;
         
         //fell out of aspiration window, search again
         if(useAspiration){
             if(bestScore<=alpha||bestScore>=beta){
                 alpha=INIT_ALPHA;
                 beta=INIT_BETA;
-                printf("#Aspiration Window Fail:have to search again\n");
+             //   printf("#Aspiration Window Fail:have to search again\n");
                 depth--;//search same depth again
                 continue;
             }else{
@@ -437,17 +477,13 @@ ChError doAi(ChessBoard* board, Properties* player){
         
         /***********
          *STATISTICS
-         ************/
-        char charMove[6];    
+         ************/   
         
         //ply score time nodes pv
-        printf("%d %d %f %d ",depth,info.bestMoveScores[depth],(float)(clock()-startTime)/CLOCKS_PER_SEC,info.movesPerIterationCalculated+info.quietNodes);
-        for(int i=depth;i>=max(1,depth-20);i--){
-            moveToChar(&info.bestMoves[i], charMove);
-            printf("%s ",charMove);
-        }
-        printf("\n");
-        moveToChar(&info.bestMoves[depth], charMove);
+        printf("%d %d %f %d ",depth,bestScore,(float)(clock()-startTime)/CLOCKS_PER_SEC,info.movesPerIterationCalculated+info.quietNodes);
+        printPV(board,&info.bestMove,depth);
+        bestFinishedMove=info.bestMove;
+        overallBestScore=bestScore;
         // printf("#In Depth %d best move score %d with move %s out of %d nodes with %d qis\n",depth,info.bestMoveScores[depth],charMove,info.movesPerIterationCalculated,info.quietNodes);
         
         
@@ -465,33 +501,20 @@ ChError doAi(ChessBoard* board, Properties* player){
     
     
     long rep=probeRepetitionTable(&board->zobrist);
-    if((rep>=3||board->repetitionMoves>=50)&&info.bestMoveScores<0){
+    if((rep>=3||board->repetitionMoves>=50)&&overallBestScore<0){
         hr=ChError_RepetitionDraw;
         return hr;
     }
     
-    if(!stopSearch){
-        moveToChar(&info.bestMoves[depth-1], charMove);
-#ifdef DEBUG
-        assert(isLegal(board,&info.bestMoves[depth-1]));
-#endif
-    }else{
-        moveToChar(&lastSerachesBestMove, charMove);
-#ifdef DEBUG
-        assert(isLegal(board,&lastSerachesBestMove ));
-#endif
-    }
     
-    printf("#Found best move %s in %f sec out of %d nodes having %f nodes/sec.\n",charMove,((float)(clock()-time)/CLOCKS_PER_SEC),info.allMovesCalculated,(info.allMovesCalculated+info.quietNodes)/((float)(clock()-time)/CLOCKS_PER_SEC));
-    printf("#This run i had %d tableLookups and %d cutoffs and %d quiet nodes.\n",info.tableLookUpsFound,info.cutOffs,info.quietNodes);
+    printf("#Found best move %s in %f sec out of %lu nodes having %f nodes/sec.\n",charMove,((float)(clock()-time)/CLOCKS_PER_SEC),info.allMovesCalculated,(info.allMovesCalculated+info.quietNodes)/((float)(clock()-time)/CLOCKS_PER_SEC));
+    printf("#This run i had %d tableLookups and %d cutoffs and %d quiet nodes.\n",info.hashExactCutoffs,info.cutOffs,info.quietNodes);
     
+    moveToChar(&bestFinishedMove, charMove);
     printf("move %s\n",charMove);
+    doMove(board, &bestFinishedMove, &h);
     
-    if(!stopSearch)
-        doMove(board, &info.bestMoves[depth-1],&h);
-    else
-        doMove(board, &lastSerachesBestMove,&h);
-    
+        
     printBoardE(board);
     
     
@@ -510,5 +533,94 @@ ChError doAi(ChessBoard* board, Properties* player){
             break;
     }
     
+    return hr;
+}
+
+
+
+ChError doAiTest(ChessBoard* board, int searchDepth,SearchInformation* info){
+    History h={0};
+    //print move
+    char charMove[6];
+    
+    clearHashTable();
+    
+    int alpha=INIT_ALPHA;
+    int beta = INIT_BETA;
+    
+    ChError hr=ChError_OK;
+    
+    MoveList list={0};
+    
+    info->board=board;
+    info->list=&list;
+    info->movesPerIterationCalculated=0;
+    
+    hr=generateMoves(board, board->colorToPlay, &list);
+    switch (hr){
+        case ChError_OK:
+            break;
+        case ChError_CheckMate:
+            return hr;
+            break;
+        case ChError_StaleMate:
+            return hr;
+            break;
+        default:
+            printError(hr);
+            break;
+    }
+    
+    list.nextFree=0;
+    
+    timeForThisMove=100000000; //endless time, tests are only limited by depth
+    startTime=clock();
+    stopSearch=0;
+    nextTimeCheck=TIME_CHECK_INTERVAL;
+    
+    int depth =1;
+    Move bestFinishedMove;
+    int overallBestScore;
+    for(;!stopSearch&&depth<=searchDepth&&depth<MAX_DEPTH;depth++){
+        info->globalDepth=depth;
+
+        int bestScore=NegaScoutRoot(alpha, beta, depth,0, info);
+        
+        if(stopSearch)
+            break;
+        
+        //fell out of aspiration window, search again
+        if(useAspiration){
+            if(bestScore<=alpha||bestScore>=beta){
+                alpha=INIT_ALPHA;
+                beta=INIT_BETA;
+                //   printf("#Aspiration Window Fail:have to search again\n");
+                depth--;//search same depth again
+                continue;
+            }else{
+                alpha=bestScore-ASPIRATION_SIZE;
+                beta=bestScore+ASPIRATION_SIZE;
+            }
+        }else{
+            alpha=INIT_ALPHA;
+            beta=INIT_BETA;            
+        }
+        
+        info->totalTimeUsed+=(clock()-startTime);
+        //ply score time nodes pv
+       // printf("%d %d %f %d ",depth,bestScore,(float)(clock()-startTime)/CLOCKS_PER_SEC,info->movesPerIterationCalculated+info->quietNodes);
+        bestFinishedMove=info->bestMove;
+        overallBestScore=bestScore;
+       // printPV(board, &bestFinishedMove,depth);
+        // printf("#In Depth %d best move score %d with move %s out of %d nodes with %d qis\n",depth,info.bestMoveScores[depth],charMove,info.movesPerIterationCalculated,info.quietNodes);
+        
+        
+        info->globalQuietNodes+=info->quietNodes;
+        info->allMovesCalculated+=info->movesPerIterationCalculated;
+        info->quietNodes=0;
+        info->movesPerIterationCalculated=0; 
+        
+        
+    }
     return hr;
 }

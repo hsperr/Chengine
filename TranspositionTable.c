@@ -255,9 +255,6 @@ u_int64_t getZobristHash(ChessBoard* board){
 }
 
 ChError probe(u_int64_t zobrist, int depth, int* alpha, int* beta, int* score, Move* move){
-    if(depth==0)
-        return ChError_NotInTable;
-    
     long index=zobrist%hashTableSize;
     
     TableEntry* entry=&hashTable[index];
@@ -307,7 +304,13 @@ ChError updateCastleRightZobrist(u_int64_t* zobrist, int nr){//KQkq
     *zobrist^=CASTLING_RIGHTS[nr];
     return ChError_OK;
 }
+ChError updateRepetitionZobrist(u_int64_t* zobrist, int nr){
+    return ChError_OK;
+}
 ChError setEnPassantZobrist(u_int64_t* zobrist, int oldEnPassant, int newEnPassant){
+    if(oldEnPassant==newEnPassant)
+        return ChError_OK;
+    
     if(oldEnPassant!=-5){
         *zobrist^=enPassant[(oldEnPassant&0x0F)];
     }

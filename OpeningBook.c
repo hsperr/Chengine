@@ -438,7 +438,7 @@ Move openBookAndGetNextMove(char* file_name, uint64* key){
     int ret, i;
     char move_s[6];
     int total_weight;
-    Move lastChosen={0};
+    Move lastChosen={0,0};
     f=fopen(file_name,"rb");
     if(!f){
         perror(file_name);

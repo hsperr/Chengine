@@ -284,6 +284,7 @@ ChError readFENString(ChessBoard* board, char* fen){
     clearHashTable();
     memset(&board->playerScores, 0, sizeof(PieceScores)*2);
     
+    
     //reset piece index
     for(int i=0;i<16;i++){
         board->whiteToSquare[i].piece=NO_PIECE;
@@ -466,13 +467,19 @@ ChError readFENString(ChessBoard* board, char* fen){
     }
     
     if(fen[stringIndex]=='\0'){
+        board->repetitionMoves=0;
+        board->zobrist=getZobristHash(board);
         return ChError_OK;
     } if(fen[stringIndex]==' '){
         stringIndex++;
     }else{
         return ChError_BrokenFenString;
     }
-    
+    if(fen[stringIndex]<'0'||fen[stringIndex]>'1'){
+        board->repetitionMoves=0;
+        board->zobrist=getZobristHash(board);
+        return ChError_OK;
+    }
     board->repetitionMoves=0;
     while(fen[stringIndex]!=' '){
         char fenPos=fen[stringIndex];
@@ -985,16 +992,24 @@ ChError doMove(ChessBoard* board, Move* move, History* history){
         history->capturedPiece->location=NO_LOCATION;
       
     }
-
+#ifdef DEBUG
+    u_int64_t zobrist4=getZobristHash(board);
+    assert(board->zobrist==zobrist4);
+#endif
     removePieceZobrist(&board->zobrist,move->from, board->tiles[move->from]->piece,myColor);
     board->tiles[move->to]=board->tiles[move->from];
     board->tiles[move->from]=NULL;
     board->tiles[move->to]->location=move->to;
     addPieceZobrist(&board->zobrist,move->to, board->tiles[move->to]->piece,myColor);
+   
+    
+#ifdef DEBUG
+    u_int64_t zobrist3=getZobristHash(board);
+    assert(board->zobrist==zobrist3);
+#endif
+    
     //reset enpassant
     board->enPassantSquare=NO_LOCATION;
-    
-  
     
     board->castlingRights&=castlingRights[move->from];
     board->castlingRights&=castlingRights[move->to];
@@ -1089,9 +1104,11 @@ ChError doMove(ChessBoard* board, Move* move, History* history){
     incrementRepetitionTable(&board->zobrist);
     
     if(history->capturedPiece==NULL&&board->tiles[move->to]->piece!=pawn)
-        board->repetitionMoves++;
+        board->repetitionMoves+=1;
     else
         board->repetitionMoves=0;
+    
+    
        
 #ifdef DEBUG
     u_int64_t zobrist2=getZobristHash(board);
@@ -1537,6 +1554,10 @@ ChError generateMoves(ChessBoard* board,enum Color color, MoveList* moveList){
     return ChError_OK;
 }
 
+int sortWeights[]={100000,100,14,18,17,15,15,20,40,90};
+int* getSortWeights(void){
+    return sortWeights;
+}
 
 static int getMoveScore(Move* m1, SearchInformation* info){
     int score=0;
@@ -1545,49 +1566,49 @@ static int getMoveScore(Move* m1, SearchInformation* info){
     
     //capture
     if(info->board->tiles[m1->to]!=NULL){
-        score+=getPieceScore(info->board->tiles[m1->to]->piece)*100000;
+        score+=getPieceScore(info->board->tiles[m1->to]->piece)*sortWeights[0];
         score-=getPieceScore(info->board->tiles[m1->from]->piece);
     }
     else{
         if(info->killerMoves[info->currentDepth][0].from!=0&&
            info->killerMoves[info->currentDepth][0].to!=0&&
            equalMoves(&info->killerMoves[info->currentDepth][0], m1)){
-            score+=100;
+            score+=sortWeights[1];
         }
         if(info->killerMoves[info->currentDepth][1].from!=0&&
            info->killerMoves[info->currentDepth][1].to!=0&&
            equalMoves(&info->killerMoves[info->currentDepth][1], m1)){
-            score+=100;
+            score+=sortWeights[1];
         }
         switch(info->board->tiles[m1->from]->piece){
             case pawn:
-                score+=14;
+                score+=sortWeights[2];
                 break;
             case queen:
-                score+=18;
+                score+=sortWeights[3];
                 break;
             case rook:
-                score+=17;
+                score+=sortWeights[4];
                 break;
             case knight:
-                score+=15;
+                score+=sortWeights[5];
                 break;
             case bishop:
-                score+=15;
+                score+=sortWeights[6];
                 break;
             case king:
-                score+=20;
+                score+=sortWeights[7];
                 break;
                 
         }
         
         if(m1->promote)
-            score+=40;
+            score+=sortWeights[8];
         
     }
     
     if(info->history)
-        score+=info->history[m1->from][m1->to]+90;
+        score+=info->history[m1->from][m1->to]+sortWeights[9];
     return score;
 }
 

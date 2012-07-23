@@ -8,21 +8,32 @@
 
 #include "Chengine.h"
 #include "OpeningBook.h"
+#include "TestFramework.h"
 
 
 
 int main (int argc, const char * argv[])
 {
-    
+    ChError hr;    
     setbuf(stdout, NULL);
     setbuf(stdin, NULL);
     
     Game newGame;
-    ChError hr;
+    
+    if((hr=initBoard(&newGame.board))){
+        printf("After init board:");
+        printError(hr);
+    }
+    
+
     initHashTable(65536*2*2*2*2*2*2);
     initRepetitionTable(65536);
     initEvalTable(65536*2*2*2*2*2*2);
     
+    if(argc>1&&*argv[1]=='t'){
+          //testPositions(&newGame.board); 
+        optimizeParameters(&newGame.board);
+    }else{
     
     newGame.isRunning=1;
     
@@ -36,11 +47,10 @@ int main (int argc, const char * argv[])
     newGame.Player[BLACK].isAi=1;
     newGame.Player[BLACK].useOpeningTable=1;
     
-    if((hr=initBoard(&newGame.board))){
-        printf("After init board:");
-        printError(hr);
-    }
 
+
+ 
+    
     //readFENString(&newGame.board, "3r1k2/4npp1/1ppr3p/p6P/P2PPPP1/1NR5/5K2/2R5 w - - 0 0");
     //printf("Evaluate: %d\n",evaluate(&newGame.board));
     printBoardE(&newGame.board);
@@ -82,42 +92,8 @@ int main (int argc, const char * argv[])
             checkForInput(&newGame); 
         }
     }
-
+    }
     
-    //TESTING
-    //test openingbook
-
-    
-    //assert(isLegal(&newGame.board, &openingMove));
-     /*
-    printf("Perfting\n");
-    readFENString(&newGame.board, "3r1k2/4npp1/1ppr3p/p6P/P2PPPP1/1NR5/5K2/2R5 w - - 0 0");
-   // readFENString(&newGame.board, "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 0");
-    printBoardE(&newGame.board);
-    perft(&newGame.board,1);
-    perft(&newGame.board,2);
-    perft(&newGame.board,3);
-    perft(&newGame.board,4);
-    perft(&newGame.board,5);
-    perft(&newGame.board,6);
-    
-   // 
-
-    printf("Perfting 1 2 3 4\n");
-    perft_hash(&newGame.board,1);
-    perft_hash(&newGame.board,2);
-    perft_hash(&newGame.board,3);
-    perft_hash(&newGame.board,4);
-    printf("Perfting 5 6 7 8\n");
-
-    perft_hash(&newGame.board,5);
-    perft_hash(&newGame.board,5);
-
-    perft_hash(&newGame.board,6);
-   // perft_hash(&newGame.board,7);
-   // perft_hash(&newGame.board,8);
-    
-    */
     freeTable();
     return 0;
 }

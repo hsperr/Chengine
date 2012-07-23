@@ -33,6 +33,8 @@ void generateAttackMap(ChessBoard* board, enum Color attackerColor, int* attackM
 ChError doMove(ChessBoard* board, Move* move, History* history);
 ChError undoMove(ChessBoard* board, Move* move, History* history);
 
+int* getSortWeights(void);
+
 
 
 ChError insertPiece(ChessBoard* board, PIECE pieceType, Color color, int location);

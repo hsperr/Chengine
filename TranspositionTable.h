@@ -34,6 +34,7 @@ ChError removePieceZobrist(u_int64_t* zobrist,int location,PIECE piece, Color co
 ChError switchColorZobrist(u_int64_t* zobrist);
 ChError setEnPassantZobrist(u_int64_t* zobrist, int oldEnPassant, int newEnPassant);
 ChError updateCastleRightZobrist(u_int64_t* zobrist, int nr); //KQkq
+ChError updateRepetitionZobrist(u_int64_t* zobrist, int nr); 
 
 ChError clearHashTable(void);
 void clearRepetitionTable(void);

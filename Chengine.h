@@ -75,10 +75,16 @@ typedef struct History{
 }History;
 
 typedef struct Move{
-    unsigned char from;
-    unsigned char to;
-    unsigned char promote;
-    unsigned char moveType;
+    union {
+        struct{
+        unsigned char from;
+        unsigned char to;
+        unsigned char promote;
+        unsigned char moveType;
+        };
+        int32_t value;
+    };
+    int score;
 }Move;
 
 typedef struct MoveList{
@@ -148,23 +154,33 @@ typedef struct Game{
 typedef struct SearchInformation{
     ChessBoard* board;
     //statistics
-    int allMovesCalculated;
+    long allMovesCalculated;
+    long globalQuietNodes;
+
+    
     int movesPerIterationCalculated;
     int quietNodes;
-    int tableLookUpsFound;
+    
+    int hashExactCutoffs;
+    
+    int evalHits;
+    int nullCutOffs;
+    int hashMoveCutOffs;
     int cutOffs;
-    int globalDepth;
-    int currentDepth;
-    char isProlonged;
+    
+    int pvsFail;
+    
+    int totalTimeUsed;
+    
+    char globalDepth;
+    char currentDepth;
     
     
     MoveList* list; //global move list 
     int history[128][128];
     Move killerMoves[200][2];
+    Move bestMove;
     
-    
-    Move* bestMoves;     //principal variation
-    int* bestMoveScores;
 }SearchInformation;
 
 ChError addToMoveList(MoveList* moveList, Move* move);

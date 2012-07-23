@@ -17,6 +17,7 @@
 
 ChError doAiMove(ChessBoard* board, Properties* aiProperties);
 ChError doAi(ChessBoard* board, Properties* player);
+ChError doAiTest(ChessBoard* board, int depth, SearchInformation* info);
 
 
 #endif
