@@ -31,8 +31,8 @@ int main (int argc, const char * argv[])
     initEvalTable(65536*2*2*2*2*2*2);
     
     if(argc>1&&*argv[1]=='t'){
-          //testPositions(&newGame.board); 
-        optimizeParameters(&newGame.board);
+          testPositions(&newGame.board); 
+        //optimizeParameters(&newGame.board);
     }else{
     
     newGame.isRunning=1;

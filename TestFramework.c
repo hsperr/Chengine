@@ -20,11 +20,11 @@ long testPositions (ChessBoard* board)
         char line [ 256 ];
         while ( fgets ( line, sizeof line, file ) != NULL) 
         {
-            // fputs ( line, stdout );
+             fputs ( line, stdout );
             readFENString(board, line);
             //printBoardE(board);
             
-            doAiTest(board, 5,&info);
+            doAiTest(board, 1,&info);
             
             
             
@@ -71,9 +71,9 @@ void optimizeParameters(ChessBoard* board){
                         for(int w5=-10;w5<10;w5+=2){
                             for(int w6=-10;w6<10;w6+=2){
                                 for(int w7=-10;w7<10;w7+=2){
-                                    for(int w8=-100;w8<110;w8+=2){
+                                    for(int w8=-20;w8<20;w8+=10){
                                         
-                                        for(int w9=-100;w9<110;w9+=10){
+                                        for(int w9=-20;w9<20;w9+=10){
                                             sortWeights[0]=originalWeights[0]+w1;
                                             sortWeights[1]=originalWeights[1]+w2;
                                             sortWeights[2]=originalWeights[2]+w3;
