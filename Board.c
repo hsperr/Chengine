@@ -1313,7 +1313,7 @@ static ChError addMove(ChessBoard* board,int from, int to, PIECE promotion, enum
                 move.score+=info->history[move.from][move.to]+sortWeights[9];
             
         }
-        
+        move.score+=getExpectedMoveScoreChange(board,&move);
     
         hr=addToMoveList(list, &move);
         
@@ -1360,8 +1360,46 @@ static ChError addMove(ChessBoard* board,int from, int to, PIECE promotion, enum
                 move.score+=getPieceScore(board->tiles[move.to]->piece)*100000;
                 move.score-=getPieceScore(board->tiles[move.from]->piece);
             }else{
-                move.score+=getPieceScore(board->tiles[move.from]->piece);
+                if(info->killerMoves[info->currentDepth][0].from!=0&&
+                   info->killerMoves[info->currentDepth][0].to!=0&&
+                   equalMoves(&info->killerMoves[info->currentDepth][0], &move)){
+                    move.score+=sortWeights[1];
+                }
+                if(info->killerMoves[info->currentDepth][1].from!=0&&
+                   info->killerMoves[info->currentDepth][1].to!=0&&
+                   equalMoves(&info->killerMoves[info->currentDepth][1], &move)){
+                    move.score+=sortWeights[1];
+                }
+                switch(info->board->tiles[move.from]->piece){
+                    case pawn:
+                        move.score+=sortWeights[2];
+                        break;
+                    case queen:
+                        move.score+=sortWeights[3];
+                        break;
+                    case rook:
+                        move.score+=sortWeights[4];
+                        break;
+                    case knight:
+                        move.score+=sortWeights[5];
+                        break;
+                    case bishop:
+                        move.score+=sortWeights[6];
+                        break;
+                    case king:
+                        move.score+=sortWeights[7];
+                        break;
+                        
+                }
+                
+                if(move.promote)
+                    move.score+=sortWeights[8];
+                
+                if(info->history)
+                    move.score+=info->history[move.from][move.to]+sortWeights[9];
+                
             }
+            move.score+=getExpectedMoveScoreChange(board,&move);
             hr=addToMoveList(list, &move);
             
         }
@@ -1686,6 +1724,8 @@ static int getMoveScore(Move* m1, SearchInformation* info){
     
     if(info->history)
         score+=info->history[m1->from][m1->to]+sortWeights[9];
+    
+    score+=getExpectedMoveScoreChange(info->board,m1);
     return score;
 }
 

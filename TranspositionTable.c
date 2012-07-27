@@ -300,14 +300,14 @@ ChError addKeyToTable(u_int64_t zobrist, int depth, int score, Bound bound, Move
 
     TableEntry* entry=&hashTable[index];
     
-
+    if(depth>entry->depth){
         //collision //always replace
         entry->zobrist=zobrist;
         entry->depth=depth;
         entry->score=score;
         entry->bound=bound;
         entry->move=move;
-    
+    }
     return ChError_OK;
 }
 
