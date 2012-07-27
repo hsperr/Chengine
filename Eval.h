@@ -15,4 +15,5 @@
 
 int EvaluateComplex(ChessBoard* board);
 int evaluate(ChessBoard* board);
+int getExpectedMoveScoreChange(ChessBoard* board, Move* move);
 #endif
