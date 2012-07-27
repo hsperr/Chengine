@@ -24,15 +24,15 @@ ChError resetBoard(ChessBoard* board);
 ChError readFENString(ChessBoard* board, char* fen);
 void printBoardE(ChessBoard* board);
 
-ChError generateMoves(ChessBoard* board,enum Color color, MoveList* moveList);
+ChError generateMoves(ChessBoard* board,enum Color color, MoveList* moveList,SearchInformation* info);
 ChError generateSortedMoves(ChessBoard* board,enum Color color, MoveList* moveList, SearchInformation* info);
 ChError generateCaptures(ChessBoard* board,enum Color color, MoveList* moveList, SearchInformation* info);
-ChError generateMoveForPosition(ChessBoard* board,const PieceInfo* pieceInfo, MoveList* moveList, int usePins, Pin* pinnedPieces);
+ChError generateMoveForPosition(ChessBoard* board,const PieceInfo* pieceInfo, MoveList* moveList, int usePins, Pin* pinnedPieces,SearchInformation* info);
 void generateAttackMap(ChessBoard* board, enum Color attackerColor, int* attackMap);
 
-ChError doMove(ChessBoard* board, Move* move, History* history);
+ChError doMove(ChessBoard* board, Move* move);
 ChError undoMove(ChessBoard* board, Move* move, History* history);
-
+ChError undoLastMove(ChessBoard* board);
 int* getSortWeights(void);
 
 
@@ -58,6 +58,8 @@ ChError getFenString(ChessBoard* board, char* fen);
 int rank(int index); 
 int boardFile(int index);
 int distance(int squareA, int squareB);
+
+void clearBoard();
 
 
 #endif

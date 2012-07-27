@@ -192,7 +192,7 @@ void checkForInput(Game* game){
                                     move.promote=knight;
                                 
                                 if(isLegal(&game->board,&move)){
-                                    doMove(&game->board, &move,&history);
+                                    doMove(&game->board, &move);
                                     printBoardE(&game->board);
                                     return;
                                 }else{

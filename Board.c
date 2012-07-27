@@ -76,6 +76,8 @@ static inline int SAME_COLUMN(int position1, int position2){return COLUMN(positi
 static inline int IS_PROMOTE_ROW(int position,enum Color color) {return (color==WHITE&&ROW(position)==0)||(color==BLACK&&ROW(position)==8);};
 
 static int pieceValues[]={100,300,10000,300,500,900};
+int sortWeights[]={100000,100,14,18,17,15,15,20,40,90};
+MoveList legalMoveList={0};
 
 
 
@@ -88,6 +90,9 @@ ChError initBoard(ChessBoard* board){
     board->playedMoves.alloc=0;
     board->playedMoves.nextFree=0;
     board->playedMoves.array=NULL;
+    
+    memset(board->undo, 0, 220*sizeof(History));
+    board->nextFreeUndo=0;
     
     readFENString(board,"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
     
@@ -105,6 +110,9 @@ ChError resetBoard(ChessBoard* board){
     board->playedMoves.alloc=0;
     board->playedMoves.nextFree=0;
     board->playedMoves.array=NULL;
+    
+    memset(board->undo, 0, 220*sizeof(History));
+    board->nextFreeUndo=0;
     
     
     readFENString(board,"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
@@ -279,6 +287,8 @@ ChError readFENString(ChessBoard* board, char* fen){
     int stringIndex=0;
     ChError hr;
     
+    memset(board->undo, 0, 220*sizeof(History));
+    board->nextFreeUndo=0;
     //reset piece scores
     clearRepetitionTable();
     clearHashTable();
@@ -958,10 +968,14 @@ int isAttacked(ChessBoard* board, int position, enum Color attackerColor){
     return 0;
 }
 
-ChError doMove(ChessBoard* board, Move* move, History* history){
+ChError doMove(ChessBoard* board, Move* move){
     if(board==NULL||move==NULL)
         return ChError_Arguments;
-   
+    
+    History* history=&board->undo[board->nextFreeUndo];
+    board->nextFreeUndo++;
+    history->move=*move;
+    
 #ifdef DEBUG
     u_int64_t zobrist=getZobristHash(board);
     assert(board->zobrist==zobrist);
@@ -1108,8 +1122,6 @@ ChError doMove(ChessBoard* board, Move* move, History* history){
     else
         board->repetitionMoves=0;
     
-    
-       
 #ifdef DEBUG
     u_int64_t zobrist2=getZobristHash(board);
     assert(board->zobrist==zobrist2);
@@ -1117,13 +1129,26 @@ ChError doMove(ChessBoard* board, Move* move, History* history){
     return ChError_OK;
 }
 
-ChError undoMove(ChessBoard* board,Move* move, History* history){
+ChError undoLastMove(ChessBoard* board){
+    board->nextFreeUndo--;
+    History* history=&board->undo[board->nextFreeUndo];
+    ChError hr= undoMove(board, &history->move, history);
+    memset(history,0,sizeof(History));
+    
+    return hr;
+}
+
+ChError undoMove(ChessBoard* board,Move* move,History* history){
     if(board==NULL||move==NULL)
         return ChError_Arguments;
+    
+    
 #ifdef DEBUG
     u_int64_t zobrist=getZobristHash(board);
     assert(board->zobrist==zobrist);
 #endif
+    if(board->tiles[move->to]==NULL)
+        printBoardE(board);
     assert(board->tiles[move->to]!=NULL);
     decrementRepetitionTable(&board->zobrist);
     board->colorToPlay=board->colorToPlay==WHITE?BLACK:WHITE;
@@ -1218,7 +1243,7 @@ int isCheck(ChessBoard* board, Color color){
     return isAttacked(board, myPieces[0].location, color==WHITE?BLACK:WHITE);
     
 }
-static ChError addMove(ChessBoard* board,int from, int to, PIECE promotion, enum MoveType type, MoveList* list, int usePins, Pin* pinnedPieces){
+static ChError addMove(ChessBoard* board,int from, int to, PIECE promotion, enum MoveType type, MoveList* list, int usePins, Pin* pinnedPieces,SearchInformation* info){
     ChError hr=ChError_OK;
 
     //if piece is pinned it can only move if it hits the pinning piece
@@ -1245,6 +1270,51 @@ static ChError addMove(ChessBoard* board,int from, int to, PIECE promotion, enum
         move.to=to;
         move.moveType=type;
         move.promote=promotion;
+        if(board->tiles[to]){
+            move.score+=getPieceScore(board->tiles[move.to]->piece)*100000;
+            move.score-=getPieceScore(board->tiles[move.from]->piece);
+        }else{
+            if(info->killerMoves[info->currentDepth][0].from!=0&&
+               info->killerMoves[info->currentDepth][0].to!=0&&
+               equalMoves(&info->killerMoves[info->currentDepth][0], &move)){
+                move.score+=sortWeights[1];
+            }
+            if(info->killerMoves[info->currentDepth][1].from!=0&&
+               info->killerMoves[info->currentDepth][1].to!=0&&
+               equalMoves(&info->killerMoves[info->currentDepth][1], &move)){
+                move.score+=sortWeights[1];
+            }
+            switch(info->board->tiles[move.from]->piece){
+                case pawn:
+                    move.score+=sortWeights[2];
+                    break;
+                case queen:
+                    move.score+=sortWeights[3];
+                    break;
+                case rook:
+                    move.score+=sortWeights[4];
+                    break;
+                case knight:
+                    move.score+=sortWeights[5];
+                    break;
+                case bishop:
+                    move.score+=sortWeights[6];
+                    break;
+                case king:
+                    move.score+=sortWeights[7];
+                    break;
+                    
+            }
+            
+            if(move.promote)
+                move.score+=sortWeights[8];
+            
+            if(info->history)
+                move.score+=info->history[move.from][move.to]+sortWeights[9];
+            
+        }
+        
+    
         hr=addToMoveList(list, &move);
         
     }else{ 
@@ -1286,7 +1356,14 @@ static ChError addMove(ChessBoard* board,int from, int to, PIECE promotion, enum
             move.to=to;
             move.moveType=type;
             move.promote=promotion;
+            if(board->tiles[to]){
+                move.score+=getPieceScore(board->tiles[move.to]->piece)*100000;
+                move.score-=getPieceScore(board->tiles[move.from]->piece);
+            }else{
+                move.score+=getPieceScore(board->tiles[move.from]->piece);
+            }
             hr=addToMoveList(list, &move);
+            
         }
 
     }
@@ -1295,7 +1372,7 @@ static ChError addMove(ChessBoard* board,int from, int to, PIECE promotion, enum
 }
 
 
-ChError generateMoveForPosition(ChessBoard* board,const PieceInfo* pieceInfo, MoveList* moveList, int usePins, Pin* pinnedPieces){
+ChError generateMoveForPosition(ChessBoard* board,const PieceInfo* pieceInfo, MoveList* moveList, int usePins, Pin* pinnedPieces,SearchInformation* info){
     int rookdeltas[]={-0x01,0x01,-0x10,0x10};
     int bishopdeltas[]={-0x11,-0x0F,0x0F,0x11};
     int kingdeltas[]={-0x01,-0x11,-0x10,-0x0F,0x01,0x11,0x10,0x0F};
@@ -1315,12 +1392,12 @@ ChError generateMoveForPosition(ChessBoard* board,const PieceInfo* pieceInfo, Mo
                     
                     if(((nextPosition&0xF0)==0x00&&pieceInfo->color==WHITE)||
                        ((nextPosition&0xF0)==0x70&&pieceInfo->color==BLACK)){
-                        addMove(board,position, nextPosition,queen,PROMOTION, moveList,usePins,pinnedPieces);
-                        addMove(board,position, nextPosition,knight,PROMOTION, moveList,usePins,pinnedPieces);
-                        addMove(board,position, nextPosition,rook,PROMOTION, moveList,usePins,pinnedPieces);
-                        addMove(board,position, nextPosition,bishop,PROMOTION, moveList,usePins,pinnedPieces);
+                        addMove(board,position, nextPosition,queen,PROMOTION, moveList,usePins,pinnedPieces,info);
+                        addMove(board,position, nextPosition,knight,PROMOTION, moveList,usePins,pinnedPieces,info);
+                        addMove(board,position, nextPosition,rook,PROMOTION, moveList,usePins,pinnedPieces,info);
+                        addMove(board,position, nextPosition,bishop,PROMOTION, moveList,usePins,pinnedPieces,info);
                     }else{
-                        addMove(board,position, nextPosition,0,NORMAL, moveList,usePins,pinnedPieces);
+                        addMove(board,position, nextPosition,0,NORMAL, moveList,usePins,pinnedPieces,info);
                     }
                     
                     int homeRow=pieceInfo->color==BLACK?(position&0xF0)==0x10:(position&0xF0)==0x60;
@@ -1328,7 +1405,7 @@ ChError generateMoveForPosition(ChessBoard* board,const PieceInfo* pieceInfo, Mo
                         nextPosition+=0x10*pawnDirectionModifier;
                         pieceOnNewSquare=getPieceForTile(board,nextPosition);
                         if(!pieceOnNewSquare){
-                            addMove(board,position, nextPosition,0,PAWNDOUBLE, moveList,usePins,pinnedPieces);
+                            addMove(board,position, nextPosition,0,PAWNDOUBLE, moveList,usePins,pinnedPieces,info);
                         }
                     }
                 }
@@ -1340,15 +1417,15 @@ ChError generateMoveForPosition(ChessBoard* board,const PieceInfo* pieceInfo, Mo
                    pieceOnNewSquare->color!=pieceInfo->color){
                     if(((nextPosition&0xF0)==0x00&&pieceInfo->color==WHITE)||
                        ((nextPosition&0xF0)==0x70&&pieceInfo->color==BLACK)){
-                        addMove(board,position, nextPosition,queen,PROMOTION, moveList,usePins,pinnedPieces);
-                        addMove(board,position, nextPosition,knight,PROMOTION, moveList,usePins,pinnedPieces);
-                        addMove(board,position, nextPosition,rook,PROMOTION, moveList,usePins,pinnedPieces);
-                        addMove(board,position, nextPosition,bishop,PROMOTION, moveList,usePins,pinnedPieces);
+                        addMove(board,position, nextPosition,queen,PROMOTION, moveList,usePins,pinnedPieces,info);
+                        addMove(board,position, nextPosition,knight,PROMOTION, moveList,usePins,pinnedPieces,info);
+                        addMove(board,position, nextPosition,rook,PROMOTION, moveList,usePins,pinnedPieces,info);
+                        addMove(board,position, nextPosition,bishop,PROMOTION, moveList,usePins,pinnedPieces,info);
                     }else{
-                        addMove(board,position, nextPosition,0,NORMAL, moveList,usePins,pinnedPieces);               
+                        addMove(board,position, nextPosition,0,NORMAL, moveList,usePins,pinnedPieces,info);               
                     }
                 }else if(board->enPassantSquare==nextPosition){
-                    addMove(board,position, nextPosition,0,ENPASSANT, moveList,usePins,pinnedPieces); 
+                    addMove(board,position, nextPosition,0,ENPASSANT, moveList,usePins,pinnedPieces,info); 
                 }
             }
             nextPosition=position+0x0F*pawnDirectionModifier;
@@ -1358,15 +1435,15 @@ ChError generateMoveForPosition(ChessBoard* board,const PieceInfo* pieceInfo, Mo
                    pieceOnNewSquare->color!=pieceInfo->color){
                     if(((nextPosition&0xF0)==0x00&&pieceInfo->color==WHITE)||
                        ((nextPosition&0xF0)==0x70&&pieceInfo->color==BLACK)){
-                        addMove(board,position, nextPosition,queen,PROMOTION, moveList,usePins,pinnedPieces);
-                        addMove(board,position, nextPosition,knight,PROMOTION, moveList,usePins,pinnedPieces);
-                        addMove(board,position, nextPosition,rook,PROMOTION, moveList,usePins,pinnedPieces);
-                        addMove(board,position, nextPosition,bishop,PROMOTION, moveList,usePins,pinnedPieces);
+                        addMove(board,position, nextPosition,queen,PROMOTION, moveList,usePins,pinnedPieces,info);
+                        addMove(board,position, nextPosition,knight,PROMOTION, moveList,usePins,pinnedPieces,info);
+                        addMove(board,position, nextPosition,rook,PROMOTION, moveList,usePins,pinnedPieces,info);
+                        addMove(board,position, nextPosition,bishop,PROMOTION, moveList,usePins,pinnedPieces,info);
                     }else{
-                        addMove(board,position, nextPosition,0,NORMAL, moveList,usePins,pinnedPieces);
+                        addMove(board,position, nextPosition,0,NORMAL, moveList,usePins,pinnedPieces,info);
                     }
                 }else if(board->enPassantSquare==nextPosition){
-                    addMove(board,position, nextPosition,0,ENPASSANT, moveList,usePins,pinnedPieces); 
+                    addMove(board,position, nextPosition,0,ENPASSANT, moveList,usePins,pinnedPieces,info); 
                 }
             }               
             
@@ -1380,7 +1457,7 @@ ChError generateMoveForPosition(ChessBoard* board,const PieceInfo* pieceInfo, Mo
                     pieceOnNewSquare=getPieceForTile(board,nextPosition);
                     if(!pieceOnNewSquare||
                        pieceOnNewSquare->color!=pieceInfo->color){
-                        addMove(board,position, nextPosition,0,NORMAL, moveList,usePins,pinnedPieces);
+                        addMove(board,position, nextPosition,0,NORMAL, moveList,usePins,pinnedPieces,info);
                     }
                 }
             }
@@ -1395,7 +1472,7 @@ ChError generateMoveForPosition(ChessBoard* board,const PieceInfo* pieceInfo, Mo
                     if((!pieceOnNewSquare||
                         pieceOnNewSquare->color!=pieceInfo->color)&&
                        !isAttacked(board,nextPosition,enemyColor)){
-                        addMove(board,position, nextPosition,0,NORMAL, moveList,usePins,pinnedPieces);;
+                        addMove(board,position, nextPosition,0,NORMAL, moveList,usePins,pinnedPieces,info);
                     }
                     
                 }
@@ -1407,7 +1484,7 @@ ChError generateMoveForPosition(ChessBoard* board,const PieceInfo* pieceInfo, Mo
                    !isAttacked(board, position, enemyColor)&&
                    !isAttacked(board, position+0x01, enemyColor)&&
                    !isAttacked(board, position+0x02, enemyColor)){
-                    addMove(board,position, position+0x02,0,WKINGCASTLE, moveList,usePins,pinnedPieces);
+                    addMove(board,position, position+0x02,0,WKINGCASTLE, moveList,usePins,pinnedPieces,info);
                 }
             }
             if((board->castlingRights&0x4)==0x4){
@@ -1417,7 +1494,7 @@ ChError generateMoveForPosition(ChessBoard* board,const PieceInfo* pieceInfo, Mo
                    !isAttacked(board, position, enemyColor)&&
                    !isAttacked(board, position-0x01, enemyColor)&&
                    !isAttacked(board, position-0x02, enemyColor)){
-                    addMove(board,position, position-0x02,0,WQUEENCASTLE, moveList,usePins,pinnedPieces);
+                    addMove(board,position, position-0x02,0,WQUEENCASTLE, moveList,usePins,pinnedPieces,info);
                 }
             }
             }else{
@@ -1427,7 +1504,7 @@ ChError generateMoveForPosition(ChessBoard* board,const PieceInfo* pieceInfo, Mo
                        !isAttacked(board, position, enemyColor)&&
                        !isAttacked(board, position+0x01, enemyColor)&&
                        !isAttacked(board, position+0x02, enemyColor)){
-                        addMove(board,position, position+0x02,0,BKINGCASTLE, moveList,usePins,pinnedPieces);
+                        addMove(board,position, position+0x02,0,BKINGCASTLE, moveList,usePins,pinnedPieces,info);
                     }
                 }
                 if((board->castlingRights&0x1)==0x1){
@@ -1437,7 +1514,7 @@ ChError generateMoveForPosition(ChessBoard* board,const PieceInfo* pieceInfo, Mo
                        !isAttacked(board, position, enemyColor)&&
                        !isAttacked(board, position-0x01, enemyColor)&&
                        !isAttacked(board, position-0x02, enemyColor)){
-                        addMove(board,position, position-0x02,0,BQUEENCASTLE, moveList,usePins,pinnedPieces);
+                        addMove(board,position, position-0x02,0,BQUEENCASTLE, moveList,usePins,pinnedPieces,info);
                     }
                 } 
             }
@@ -1453,10 +1530,10 @@ ChError generateMoveForPosition(ChessBoard* board,const PieceInfo* pieceInfo, Mo
                 while(IS_ON_BOARD(nextPosition)){
                     pieceOnNewSquare=getPieceForTile(board,nextPosition);
                     if(!pieceOnNewSquare){
-                        addMove(board,position, nextPosition,0,NORMAL, moveList,usePins,pinnedPieces);
+                        addMove(board,position, nextPosition,0,NORMAL, moveList,usePins,pinnedPieces,info);
                     }else{
                         if(pieceOnNewSquare->color!=pieceInfo->color){
-                            addMove(board,position, nextPosition,0,NORMAL, moveList,usePins,pinnedPieces); 
+                            addMove(board,position, nextPosition,0,NORMAL, moveList,usePins,pinnedPieces,info); 
                         }
                         break;
                     }
@@ -1470,10 +1547,10 @@ ChError generateMoveForPosition(ChessBoard* board,const PieceInfo* pieceInfo, Mo
                 while(IS_ON_BOARD(nextPosition)){
                     pieceOnNewSquare=getPieceForTile(board,nextPosition);
                     if(!pieceOnNewSquare){
-                        addMove(board,position, nextPosition,0,NORMAL, moveList,usePins,pinnedPieces);
+                        addMove(board,position, nextPosition,0,NORMAL, moveList,usePins,pinnedPieces,info);
                     }else{
                         if(pieceOnNewSquare->color!=pieceInfo->color){
-                            addMove(board,position, nextPosition,0,NORMAL, moveList,usePins,pinnedPieces);
+                            addMove(board,position, nextPosition,0,NORMAL, moveList,usePins,pinnedPieces,info);
                         }
                         break;
                     }
@@ -1487,10 +1564,10 @@ ChError generateMoveForPosition(ChessBoard* board,const PieceInfo* pieceInfo, Mo
                 while(IS_ON_BOARD(nextPosition)){
                     pieceOnNewSquare=getPieceForTile(board,nextPosition);
                     if(!pieceOnNewSquare){
-                        addMove(board,position, nextPosition,0,NORMAL, moveList,usePins,pinnedPieces);
+                        addMove(board,position, nextPosition,0,NORMAL, moveList,usePins,pinnedPieces,info);
                     }else{
                         if(pieceOnNewSquare->color!=pieceInfo->color){
-                            addMove(board,position, nextPosition,0,NORMAL, moveList,usePins,pinnedPieces);
+                            addMove(board,position, nextPosition,0,NORMAL, moveList,usePins,pinnedPieces,info);
                         }
                         break;
                     }
@@ -1503,10 +1580,10 @@ ChError generateMoveForPosition(ChessBoard* board,const PieceInfo* pieceInfo, Mo
                 while(IS_ON_BOARD(nextPosition)){
                     pieceOnNewSquare=getPieceForTile(board,nextPosition);
                     if(!pieceOnNewSquare){
-                        addMove(board,position, nextPosition,0,NORMAL, moveList,usePins,pinnedPieces);
+                        addMove(board,position, nextPosition,0,NORMAL, moveList,usePins,pinnedPieces,info);
                     }else{
                         if(pieceOnNewSquare->color!=pieceInfo->color){
-                            addMove(board,position, nextPosition,0,NORMAL, moveList,usePins,pinnedPieces); 
+                            addMove(board,position, nextPosition,0,NORMAL, moveList,usePins,pinnedPieces,info); 
                         }
                         break;
                     }
@@ -1521,7 +1598,7 @@ ChError generateMoveForPosition(ChessBoard* board,const PieceInfo* pieceInfo, Mo
     return ChError_OK;
 }
 
-ChError generateMoves(ChessBoard* board,enum Color color, MoveList* moveList){
+ChError generateMoves(ChessBoard* board,enum Color color, MoveList* moveList,SearchInformation* info){
     PieceInfo* pieceArray=color==WHITE?board->whiteToSquare:board->blackToSquare;
     
     Pin pinnedPieces[9];
@@ -1540,7 +1617,7 @@ ChError generateMoves(ChessBoard* board,enum Color color, MoveList* moveList){
         if(pieceArray[i].location==NO_LOCATION){
             continue;
         }
-        generateMoveForPosition(board,&pieceArray[i], moveList,usePins,pinnedPieces);
+        generateMoveForPosition(board,&pieceArray[i], moveList,usePins,pinnedPieces,info);
     }
     
     if(moveList->nextFree==offset){
@@ -1554,7 +1631,7 @@ ChError generateMoves(ChessBoard* board,enum Color color, MoveList* moveList){
     return ChError_OK;
 }
 
-int sortWeights[]={100000,100,14,18,17,15,15,20,40,90};
+
 int* getSortWeights(void){
     return sortWeights;
 }
@@ -1634,7 +1711,7 @@ static int compareMoves(void* b,const void* mv1, const void* mv2){
 ChError generateSortedMoves(ChessBoard* board,enum Color color, MoveList* moveList, SearchInformation* info){
     ChError hr;
     int nextFree=moveList->nextFree;
-    hr=generateMoves(board, color, moveList);
+    hr=generateMoves(board, color, moveList,info);
     if(hr)
         return hr;
     
@@ -1683,7 +1760,7 @@ static int compareCaptures(void* b, const void* mv1, const void* mv2){
 ChError generateCaptures(ChessBoard* board,enum Color color, MoveList* moveList, SearchInformation* info){
     ChError hr;
     int nextFree=moveList->nextFree;
-    hr=generateMoves(board, color, moveList);
+    hr=generateMoves(board, color, moveList,info);
     if(hr)
         return hr;
     
@@ -1711,21 +1788,23 @@ int equalMoves(Move* move1, Move* move2){
     return move1->from==move2->from&&move1->to==move2->to&&move1->promote==move2->promote;
 }
 ChError isLegal(ChessBoard* board, Move* move){
-    MoveList moveList={0};
-    
-    ChError hr=generateMoves(board, board->colorToPlay, &moveList);
+    legalMoveList.nextFree=0;
+    SearchInformation info={0};
+    info.board=board;
+    ChError hr=generateMoves(board, board->colorToPlay, &legalMoveList,&info);
     if(hr)
         return hr;
     
-    for(int i=0;i<moveList.nextFree;i++){
-        if(equalMoves(&moveList.array[i],move)){
-            move->moveType=moveList.array[i].moveType;
-            freeMoveList(&moveList);
-            return 1;
+    for(int i=0;i<legalMoveList.nextFree;i++){
+        Move tester=legalMoveList.array[i];
+        move->moveType=legalMoveList.array[i].moveType;
+        if(tester.value==move->value){
+            move->moveType=legalMoveList.array[i].moveType;
+            return ChError_LegalMove;
         }
     }
-    freeMoveList(&moveList);
-    return ChError_OK;
+    
+    return ChError_OK; //<--- this move is illegal return 0 for false
 }
 
 PieceInfo* getPieceForTile(ChessBoard* board, int tileIndex){
@@ -1798,3 +1877,8 @@ int boardFile(int index) { return index % 16; }
 int distance(int squareA, int squareB) {
     return max(abs(boardFile(squareA) - boardFile(squareB)), abs(rank(squareA) - rank(squareB)));
 } 
+
+void clearBoard(){
+    if(legalMoveList.array)
+        freeMoveList(&legalMoveList);
+}

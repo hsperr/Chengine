@@ -19,6 +19,14 @@ int main (int argc, const char * argv[])
     setbuf(stdin, NULL);
     
     Game newGame;
+  //  printf("A");
+    initHashTable(65536*2*2*2*2*2*2);
+  //  printf("B");
+    initRepetitionTable();
+  //  printf("C");
+    initEvalTable(65536*2*2*2*2*2*2);
+  //  printf("D");
+
     
     if((hr=initBoard(&newGame.board))){
         printf("After init board:");
@@ -26,11 +34,9 @@ int main (int argc, const char * argv[])
     }
     
 
-    initHashTable(65536*2*2*2*2*2*2);
-    initRepetitionTable(65536);
-    initEvalTable(65536*2*2*2*2*2*2);
+
     
-    if(argc>1&&*argv[1]=='t'){
+    if(argc>1&&*argv[1]=='a'){
           testPositions(&newGame.board); 
         //optimizeParameters(&newGame.board);
     }else{
@@ -38,20 +44,20 @@ int main (int argc, const char * argv[])
     newGame.isRunning=1;
     
     newGame.Player[WHITE].depth=200;
-    newGame.Player[WHITE].timelimit=4000000;
-    newGame.Player[WHITE].isAi=0;
-    newGame.Player[WHITE].useOpeningTable=1;
+    newGame.Player[WHITE].timelimit=30000;
+    newGame.Player[WHITE].isAi=1;
+    newGame.Player[WHITE].useOpeningTable=0;
     
     newGame.Player[BLACK].depth=200;
-    newGame.Player[BLACK].timelimit=30000000;
+    newGame.Player[BLACK].timelimit=30000;
     newGame.Player[BLACK].isAi=1;
-    newGame.Player[BLACK].useOpeningTable=1;
+    newGame.Player[BLACK].useOpeningTable=0;
     
 
 
  
     
-    //readFENString(&newGame.board, "3r1k2/4npp1/1ppr3p/p6P/P2PPPP1/1NR5/5K2/2R5 w - - 0 0");
+    readFENString(&newGame.board, "3r1k2/4npp1/1ppr3p/p6P/P2PPPP1/1NR5/5K2/2R5 w - - 0 0");
     //printf("Evaluate: %d\n",evaluate(&newGame.board));
     printBoardE(&newGame.board);
     while(newGame.isRunning){
@@ -95,6 +101,7 @@ int main (int argc, const char * argv[])
     }
     
     freeTable();
+    clearBoard();
     return 0;
 }
 

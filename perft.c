@@ -13,9 +13,10 @@ static long perft_rec(ChessBoard* board, Color sideToMove, int depth, MoveList* 
     
     ChError hr=ChError_OK;
     long moves=0;
+    SearchInformation info={0};
     
     int startOffset=list->nextFree;
-    hr=generateMoves(board, sideToMove, list);
+    hr=generateMoves(board, sideToMove, list,&info);
     if(hr!=ChError_OK&&hr!=ChError_StaleMate&&hr!=ChError_CheckMate){
         printf("perft rec generate move");
         printError(hr);
@@ -28,11 +29,10 @@ static long perft_rec(ChessBoard* board, Color sideToMove, int depth, MoveList* 
     }
     
     for(int i=startOffset;i<list->nextFree;i++){
-        History h={0};
         Move* moveToDo=&list->array[i];
-        doMove(board,moveToDo,&h);
+        doMove(board,moveToDo);
         moves+=perft_rec(board,board->colorToPlay,depth-1,list);
-        undoMove(board,moveToDo,&h);
+        undoLastMove(board);
 
     }
     list->nextFree=startOffset;
@@ -47,19 +47,19 @@ long perft(ChessBoard* board, int depth){
     
     
     MoveList moveList = {0};
+     SearchInformation info={0};
     
-    hr=generateMoves(board, board->colorToPlay, &moveList);
+    hr=generateMoves(board, board->colorToPlay, &moveList,&info);
     if(hr!=ChError_OK&&hr!=ChError_StaleMate&&hr!=ChError_CheckMate){
          printf("perft after generate move:");
         printError(hr);
     }
     
     for(int i=0;i<moveList.nextFree;i++){
-        History h={0};
         Move* move=&moveList.array[i];
-        doMove(board,move,&h);
+        doMove(board,move);
         moved+=perft_rec(board,board->colorToPlay,depth-1, &moveList);
-        undoMove(board,move,&h);
+        undoLastMove(board);
         
     }
     freeMoveList(&moveList);
@@ -78,18 +78,17 @@ void divide(ChessBoard* board, int depth){
     char moveAsChar[6];
     
     MoveList moveList = {0};
-    
-    hr=generateMoves(board, board->colorToPlay, &moveList);
+     SearchInformation info={0};
+    hr=generateMoves(board, board->colorToPlay, &moveList,&info);
     if(hr)
         printError(hr);
     for(int i=0;i<moveList.nextFree;i++){
-        History h={0};
         Move* move=&moveList.array[i];
-        doMove(board, move, &h);
+        doMove(board, move);
         iterationMoves=0;
         iterationMoves+=perft_rec(board,board->colorToPlay,depth-1, &moveList);
         moved+=iterationMoves;
-        undoMove(board,move,&h);
+         undoLastMove(board);
         
         moveToChar(&moveList.array[i],moveAsChar);
         printf("%s %ld %s in %f sec .\n",moveAsChar,iterationMoves,move->moveType==NORMAL?"N":"S",(float)((clock()-time)/CLOCKS_PER_SEC));

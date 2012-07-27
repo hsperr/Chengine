@@ -10,7 +10,7 @@
 
 long testPositions (ChessBoard* board)
 {
-    static const char input[] = "/Users/henningsperr/Desktop/Chess/Chengine88/Chengine/Chengine/ChessPositions.txt";
+    static const char input[] = "/Users/henningsperr/Desktop/Chess/chen/Chengine/ChessPositions.txt";
     
     FILE *file   = fopen ( input, "r" );
     long time=clock();
@@ -24,7 +24,7 @@ long testPositions (ChessBoard* board)
             readFENString(board, line);
             //printBoardE(board);
             
-            doAiTest(board, 1,&info);
+            doAiTest(board, 7,&info);
             
             
             
@@ -41,11 +41,11 @@ long testPositions (ChessBoard* board)
     printf("Quiescent Nodes: %lu (%lu)\n",info.globalQuietNodes, (info.globalQuietNodes)*100/(info.allMovesCalculated+info.globalQuietNodes));
     printf("PVS failed: %d\n",info.pvsFail);
     printf("\n");
-    int cutOffSum=info.cutOffs+info.hashMoveCutOffs+info.hashExactCutoffs+info.nullCutOffs;
-    printf("Normal BetaCutOffs: %d (%d)\n",info.cutOffs,(info.cutOffs*100)/cutOffSum);
-    printf("Hash Exact Cutoffs: %d (%d)\n",info.hashExactCutoffs,(info.hashExactCutoffs*100)/cutOffSum);
-    printf("Hash Move Cutoffs: %d (%d)\n",info.hashMoveCutOffs,(info.hashMoveCutOffs*100)/cutOffSum);
-    printf("Null Move Cutoffs: %d (%d)\n",info.nullCutOffs,(info.nullCutOffs*100)/cutOffSum);
+    int cutOffSum=info.cutOffs+info.hashMoveCutOffs+info.hashExactCutoffs+info.nullCutOffs+1;
+    printf("Normal BetaCutOffs: %d (%d)\n",info.cutOffs,((info.cutOffs*100)+1)/cutOffSum);
+    printf("Hash Exact Cutoffs: %d (%d)\n",info.hashExactCutoffs,((info.hashExactCutoffs*100)+1)/cutOffSum);
+    printf("Hash Move Cutoffs: %d (%d)\n",info.hashMoveCutOffs,((info.hashMoveCutOffs*100)+1)/cutOffSum);
+    printf("Null Move Cutoffs: %d (%d)\n",info.nullCutOffs,((info.nullCutOffs*100)+1)/cutOffSum);
     printf("\n");       
     printf("Total time: %f\n",(float)(clock()-time)/CLOCKS_PER_SEC);
     printf("\n");

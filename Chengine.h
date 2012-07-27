@@ -38,7 +38,8 @@ typedef enum {
     ChError_DepthToLow,
     ChError_IllegalMove,
     ChError_CheckMate,
-    ChError_StaleMate
+    ChError_StaleMate,
+    ChError_LegalMove
 } ChError;
 
 typedef struct PieceScores{
@@ -64,15 +65,7 @@ enum MoveType{
     BQUEENCASTLE
 }MoveType;
 
-typedef struct History{
-    //capture
-    int previousEnPassantSquare;
-    PieceInfo* capturedPiece;//also used for enpassant
-    int oldRepetitionMoves;
-    int castlingRights;
-    u_int64_t zobrist;
-    PieceScores oldScores[2];
-}History;
+
 
 typedef struct Move{
     union {
@@ -86,6 +79,17 @@ typedef struct Move{
     };
     int score;
 }Move;
+
+typedef struct History{
+    //capture
+    int previousEnPassantSquare;
+    PieceInfo* capturedPiece;//also used for enpassant
+    int oldRepetitionMoves;
+    int castlingRights;
+    u_int64_t zobrist;
+    PieceScores oldScores[2];
+    Move move;
+}History;
 
 typedef struct MoveList{
     int nextFree;
@@ -128,9 +132,6 @@ typedef struct ChessBoard{
     
     // Move is legal if sqare&0x88==0
     PieceInfo* tiles[128]; 
-    //pieceToSquare is rnbqkbnrpppppppp
-    //                 RNBWKBNRPPPPPPPP
-    //gets updated in doMove() -1 denotes piece is off the board
     PieceInfo blackToSquare[16];
     PieceInfo whiteToSquare[16];
     PieceScores playerScores[2];
@@ -142,6 +143,9 @@ typedef struct ChessBoard{
     int repetitionMoves;
     int castlingRights;
     char hasCastled; //0 nobody 1 white 2 black 3 both
+    
+    History undo[220];
+    int nextFreeUndo;
     u_int64_t zobrist;
 }ChessBoard;
 
@@ -153,6 +157,7 @@ typedef struct Game{
 
 typedef struct SearchInformation{
     ChessBoard* board;
+    char internalDeepening;
     //statistics
     long allMovesCalculated;
     long globalQuietNodes;

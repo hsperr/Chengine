@@ -23,7 +23,7 @@ typedef enum Bound{
 }Bound;
 
 ChError initHashTable(long size);
-ChError initRepetitionTable(long size);
+ChError initRepetitionTable(void);
 u_int64_t getZobristHash(ChessBoard* board);
 
 ChError addKeyToTable(u_int64_t zobrist, int depth, int score, Bound bound,Move move);
