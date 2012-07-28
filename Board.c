@@ -76,7 +76,7 @@ static inline int SAME_COLUMN(int position1, int position2){return COLUMN(positi
 static inline int IS_PROMOTE_ROW(int position,enum Color color) {return (color==WHITE&&ROW(position)==0)||(color==BLACK&&ROW(position)==8);};
 
 static int pieceValues[]={100,300,10000,300,500,900};
-int sortWeights[]={100000,100,14,18,17,15,15,20,40,90};
+int sortWeights[]={100000,100,14,18,17,15,15,20,150,90};
 MoveList legalMoveList={0};
 
 
@@ -252,7 +252,7 @@ ChError getFenString(ChessBoard* board, char* fen){
     return ChError_OK;
 }
 
-static void getGamePhase(ChessBoard* board){
+int getGamePhase(ChessBoard* board){
     board->phase=Opening;
 
     int materialCount=0;
@@ -276,9 +276,11 @@ static void getGamePhase(ChessBoard* board){
             
     }
     
-    if(materialCount<=8) board->phase=EndGame;
-    else if(materialCount>=20) board->phase=Opening;
-    else board->phase=MiddleGame;
+    if(materialCount<=14) board->phase=EndGame;
+    else board->phase=Opening;
+    //else board->phase=MiddleGame;
+    
+    return board->phase;
     
 }
 
@@ -287,7 +289,7 @@ ChError readFENString(ChessBoard* board, char* fen){
     int stringIndex=0;
     ChError hr;
     
-    memset(board->undo, 0, 220*sizeof(History));
+    memset(board->undo, 0, 1220*sizeof(History));
     board->nextFreeUndo=0;
     //reset piece scores
     clearRepetitionTable();
@@ -429,29 +431,37 @@ ChError readFENString(ChessBoard* board, char* fen){
         stringIndex++;
     }else{
         if(fen[stringIndex]=='K'){
+#ifdef DEBUG
             assert(board->tiles[H1]->piece==rook);
             assert(board->tiles[E1]->piece==king);
+#endif
             board->castlingRights|=0x8;
             
             stringIndex++;
         }
         if(fen[stringIndex]=='Q'){
+#ifdef DEBUG
             assert(board->tiles[A1]->piece==rook);
             assert(board->tiles[E1]->piece==king);
+#endif
             board->castlingRights|=0x4;
             
             stringIndex++;
         }
         if(fen[stringIndex]=='k'){
+#ifdef DEBUG
             assert(board->tiles[H8]->piece==rook);
             assert(board->tiles[E8]->piece==king);
+#endif
             board->castlingRights|=0x2;
             
             stringIndex++;
         }
         if(fen[stringIndex]=='q'){
+#ifdef DEBUG
             assert(board->tiles[A8]->piece==rook);
             assert(board->tiles[E8]->piece==king);
+#endif
             board->castlingRights|=0x1;
             
             stringIndex++;
@@ -479,6 +489,7 @@ ChError readFENString(ChessBoard* board, char* fen){
     if(fen[stringIndex]=='\0'){
         board->repetitionMoves=0;
         board->zobrist=getZobristHash(board);
+        incrementRepetitionTable(&board->zobrist);
         return ChError_OK;
     } if(fen[stringIndex]==' '){
         stringIndex++;
@@ -488,6 +499,7 @@ ChError readFENString(ChessBoard* board, char* fen){
     if(fen[stringIndex]<'0'||fen[stringIndex]>'1'){
         board->repetitionMoves=0;
         board->zobrist=getZobristHash(board);
+        incrementRepetitionTable(&board->zobrist);
         return ChError_OK;
     }
     board->repetitionMoves=0;
@@ -507,6 +519,7 @@ ChError readFENString(ChessBoard* board, char* fen){
     
     
     board->zobrist=getZobristHash(board);
+    incrementRepetitionTable(&board->zobrist);
     
     getGamePhase(board);
     
@@ -979,8 +992,8 @@ ChError doMove(ChessBoard* board, Move* move){
 #ifdef DEBUG
     u_int64_t zobrist=getZobristHash(board);
     assert(board->zobrist==zobrist);
-#endif
     assert(board->tiles[move->from]!=NULL);
+#endif
     Color myColor=board->colorToPlay;
     PieceInfo* fromPiece=board->tiles[move->from];
    
@@ -995,7 +1008,9 @@ ChError doMove(ChessBoard* board, Move* move){
     //capture piece
     if(board->tiles[move->to]!=0x0){
         history->capturedPiece=board->tiles[move->to];
+#ifdef DEBUG
         assert(history->capturedPiece->piece!=king);
+#endif
         Color enemyColor=board->colorToPlay==WHITE?BLACK:WHITE;
         
         board->playerScores[enemyColor].totalScores-=getPieceScore(history->capturedPiece->piece);
@@ -1055,7 +1070,9 @@ ChError doMove(ChessBoard* board, Move* move){
             history->capturedPiece->location=NO_LOCATION;
             break;
         case WKINGCASTLE:
+#ifdef DEBUG
             assert(board->tiles[H1]->piece==rook);
+#endif
             
             removePieceZobrist(&board->zobrist,board->tiles[H1]->location,rook,myColor);
             addPieceZobrist(&board->zobrist,move->to-0x01,rook,myColor);
@@ -1066,7 +1083,9 @@ ChError doMove(ChessBoard* board, Move* move){
             board->tiles[H1]=NULL;
             break;
         case BKINGCASTLE:
+#ifdef DEBUG
             assert(board->tiles[H8]->piece==rook);
+#endif
             
             removePieceZobrist(&board->zobrist,board->tiles[H8]->location,rook,myColor);
             addPieceZobrist(&board->zobrist,move->to-0x01,rook,myColor);
@@ -1077,8 +1096,10 @@ ChError doMove(ChessBoard* board, Move* move){
             board->tiles[H8]=NULL;
             break;
         case WQUEENCASTLE:
+#ifdef DEBUG
             assert(board->tiles[A1]!=NULL);  
             assert(board->tiles[A1]->piece==rook);
+#endif
             
             removePieceZobrist(&board->zobrist,board->tiles[A1]->location,rook,myColor);
             addPieceZobrist(&board->zobrist,move->to+0x01,rook,myColor);
@@ -1089,9 +1110,11 @@ ChError doMove(ChessBoard* board, Move* move){
             board->tiles[A1]=NULL;
             break;
         case BQUEENCASTLE:
+#ifdef DEBUG
             assert(board->tiles[A8]!=NULL);  
             assert(board->tiles[A8]->piece==rook);
             assert(board->tiles[A8]->color==BLACK);
+#endif
             
             removePieceZobrist(&board->zobrist,board->tiles[A8]->location,rook,myColor);
             addPieceZobrist(&board->zobrist,move->to+0x01,rook,myColor);
@@ -1146,10 +1169,9 @@ ChError undoMove(ChessBoard* board,Move* move,History* history){
 #ifdef DEBUG
     u_int64_t zobrist=getZobristHash(board);
     assert(board->zobrist==zobrist);
-#endif
-    if(board->tiles[move->to]==NULL)
-        printBoardE(board);
     assert(board->tiles[move->to]!=NULL);
+#endif
+    
     decrementRepetitionTable(&board->zobrist);
     board->colorToPlay=board->colorToPlay==WHITE?BLACK:WHITE;
     board->zobrist=history->zobrist;
@@ -1166,6 +1188,7 @@ ChError undoMove(ChessBoard* board,Move* move,History* history){
     board->tiles[move->to]=NULL;
     board->tiles[move->from]->location=move->from;
     
+    int index=0;
     
     if(move->moveType!=ENPASSANT){
         if(history
@@ -1187,14 +1210,18 @@ ChError undoMove(ChessBoard* board,Move* move,History* history){
         case NORMAL:
             break;
         case ENPASSANT:
+#ifdef DEBUG
             assert(history->capturedPiece!=NULL);
-            int index=move->from+COLUMN(move->to)-COLUMN(move->from);
+#endif
+            index=move->from+COLUMN(move->to)-COLUMN(move->from);
             board->tiles[index]=history->capturedPiece;
             board->tiles[move->from+COLUMN(move->to)-COLUMN(move->from)]->location=move->from+COLUMN(move->to)-COLUMN(move->from);
             
             break;
         case WKINGCASTLE:
+#ifdef DEBUG
             assert(board->tiles[(move->to-0x01)]->piece==rook);
+#endif
             
             board->tiles[H1]=board->tiles[(move->to-0x01)];
             board->tiles[H1]->location=H1;
@@ -1202,7 +1229,9 @@ ChError undoMove(ChessBoard* board,Move* move,History* history){
              board->hasCastled&=0x2;
             break;
         case BKINGCASTLE:
+#ifdef DEBUG
             assert(board->tiles[(move->to-0x01)]->piece==rook);
+#endif
             
             board->tiles[H8]=board->tiles[(move->to-0x01)];
             board->tiles[H8]->location=H8;
@@ -1210,14 +1239,18 @@ ChError undoMove(ChessBoard* board,Move* move,History* history){
             board->hasCastled&=0x1;
             break;
         case WQUEENCASTLE:
+#ifdef DEBUG
             assert(board->tiles[(move->to+0x01)]->piece==rook);
+#endif
             board->tiles[A1]=board->tiles[(move->to+0x01)];
             board->tiles[A1]->location=A1;
             board->tiles[(move->to+0x01)]=NULL;
             board->hasCastled&=0x2;
             break;
         case BQUEENCASTLE:
+#ifdef DEBUG
             assert(board->tiles[(move->to+0x01)]->piece==rook);
+#endif
             
             board->tiles[A8]=board->tiles[(move->to+0x01)];
             board->tiles[A8]->location=A8;
@@ -1328,8 +1361,9 @@ static ChError addMove(ChessBoard* board,int from, int to, PIECE promotion, enum
             board->tiles[from+COLUMN(to)-COLUMN(from)]=NULL;
             temp->location=NO_LOCATION;
         }
-     
+ #ifdef DEBUG    
         assert(board->tiles[from]);
+#endif
         board->tiles[to]=board->tiles[from];
         board->tiles[from]->location=to;
         board->tiles[from]=NULL;

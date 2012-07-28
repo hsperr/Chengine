@@ -44,6 +44,7 @@ int isAttacked(ChessBoard* board, int position, enum Color color);
 ChError isLegal(ChessBoard* board, Move* move);
 
 int getPieceScore(PIECE piece);
+int getGamePhase(ChessBoard* board);
 
 PieceInfo* getPieceForTile(ChessBoard* board, int tileIndex);
 

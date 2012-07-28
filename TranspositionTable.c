@@ -35,7 +35,7 @@ typedef struct RepEntry{
 }RepEntry;
 
 RepEntry* repetitionTable;
-int repTableSize=200;
+int repTableSize=1000;
 int nextFreeRep=0;
 
 typedef struct EvalEntry{
@@ -90,6 +90,7 @@ ChError addToEvalTable(u_int64_t* zobrist, int eval){
 ChError incrementRepetitionTable(u_int64_t* zobrist){
     int i=nextFreeRep-1;
     int foundEntry=0;
+
     for(;i>=0;i--){        
         if(repetitionTable[i].zobrist==*zobrist){
             repetitionTable[i].count++;
@@ -103,15 +104,20 @@ ChError incrementRepetitionTable(u_int64_t* zobrist){
         repetitionTable[nextFreeRep].count++;
         nextFreeRep++;
     }
+
     return ChError_OK;
 }
 ChError decrementRepetitionTable(u_int64_t* zobrist){
+#ifdef DEBUG
+    assert(repetitionTable[nextFreeRep].zobrist==0);
+#endif    
     int i=nextFreeRep-1;
     int foundIt=0;
     for(;i>=0;i--){        
         if(repetitionTable[i].zobrist==*zobrist){
             repetitionTable[i].count--;
             if(repetitionTable[i].count==0){
+            
                 repetitionTable[i].zobrist=0;
 #ifdef DEBUG
                 assert(repetitionTable[i+1].zobrist==0);
@@ -121,6 +127,7 @@ ChError decrementRepetitionTable(u_int64_t* zobrist){
             foundIt=1;
         }
     }    
+   
 #ifdef DEBUG
     assert(foundIt);
 #endif
@@ -220,7 +227,9 @@ u_int64_t getZobristHash(ChessBoard* board){
     
     if(board->enPassantSquare>=0){ //is hex like 0x54
         int col=(board->enPassantSquare&0x0F);
+#ifdef DEBUG
         assert(col>=0x00&&col<=0x07);
+#endif
         zobrist^=enPassant[col];
     }
    // printf("zobrist is %lu\n",zobrist);

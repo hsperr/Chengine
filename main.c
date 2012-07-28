@@ -19,14 +19,10 @@ int main (int argc, const char * argv[])
     setbuf(stdin, NULL);
     
     Game newGame;
-  //  printf("A");
     initHashTable(65536*2*2*2*2*2*2);
-  //  printf("B");
     initRepetitionTable();
-  //  printf("C");
     initEvalTable(65536*2*2*2*2*2*2);
-  //  printf("D");
-
+  
     
     if((hr=initBoard(&newGame.board))){
         printf("After init board:");
@@ -44,12 +40,12 @@ int main (int argc, const char * argv[])
     newGame.isRunning=1;
     
     newGame.Player[WHITE].depth=200;
-    newGame.Player[WHITE].timelimit=3000;
+    newGame.Player[WHITE].timelimit=9000;
     newGame.Player[WHITE].isAi=1;
     newGame.Player[WHITE].useOpeningTable=1;
     
     newGame.Player[BLACK].depth=200;
-    newGame.Player[BLACK].timelimit=3000;
+    newGame.Player[BLACK].timelimit=9000;
     newGame.Player[BLACK].isAi=1;
     newGame.Player[BLACK].useOpeningTable=1;
     

@@ -34,6 +34,7 @@ typedef enum {
     ChError_Resources,
     ChError_BrokenFenString,
     ChError_RepetitionDraw,
+    ChError_MaterialDraw,
     ChError_NotInTable,
     ChError_DepthToLow,
     ChError_IllegalMove,
@@ -55,7 +56,7 @@ typedef struct PieceInfo{
 }PieceInfo;
 
 enum MoveType{
-    NORMAL,
+    NORMAL=0x0,
     PAWNDOUBLE,
     PROMOTION,
     ENPASSANT,
@@ -144,7 +145,7 @@ typedef struct ChessBoard{
     int castlingRights;
     char hasCastled; //0 nobody 1 white 2 black 3 both
     
-    History undo[220];
+    History undo[1220];
     int nextFreeUndo;
     u_int64_t zobrist;
 }ChessBoard;

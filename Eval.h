@@ -16,4 +16,5 @@
 int EvaluateComplex(ChessBoard* board);
 int evaluate(ChessBoard* board);
 int getExpectedMoveScoreChange(ChessBoard* board, Move* move);
+int drawByMaterial(ChessBoard* board, Color color);
 #endif
