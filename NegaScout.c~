@@ -1,5 +1,6 @@
 //
 //  NegaScout.c
+//  Chengine
 //
 //  Created by Henning Sperr on 7/1/12.
 //  Copyright 2012 __MyCompanyName__. All rights reserved.
@@ -208,7 +209,7 @@ static int NegaScoutRoot(int alpha, int beta, int depth, int allowNull, SearchIn
         }
     }
     //ADD REPETITION DRAW AND 50 MOVE RULE HERE
-    if((probeRepetitionTable(&info->board->zobrist)>=3||info->board->repetitionMoves>=50)&&info->globalDepth!=info->currentDepth){
+    if(probeRepetitionTable(&info->board->zobrist)>=3||info->board->repetitionMoves>=50){
         //evaluate board, if side which moved into the draw (one level up)
         //was ahead return a negative score, since we don't want that
         int eval=EvaluateComplex(info->board);
@@ -236,7 +237,7 @@ static int NegaScoutRoot(int alpha, int beta, int depth, int allowNull, SearchIn
     
     //PROBE HASHTABLE HERE
     Move hashMove={0};
-    if(useHashTables&&info->globalDepth!=info->currentDepth){
+    if(useHashTables){
         int a=alpha;
         int b=beta;
         if((hr=probe(info->board->zobrist, depth,&a,&b, &localAlpha,&hashMove))){
@@ -494,7 +495,7 @@ static ChError UseOpeningTable(ChessBoard* board, Properties* player){
     getFenString(board, fenString);
     uint64 openingHash=OpeningBookHash(fenString);
     Move openingMove;
-    openingMove=openBookAndGetNextMove("/Users/henningsperr/Desktop/Chess/chen/Chengine/book.bin", &openingHash);
+    openingMove=openBookAndGetNextMove("C:\\Downloads\\ChEngine\\book.bin", &openingHash);
     if(openingMove.from!=openingMove.to){
         //valid move
         //move type
@@ -526,6 +527,7 @@ static ChError UseOpeningTable(ChessBoard* board, Properties* player){
     }else{
         player->useOpeningTable=0;
     }
+    
     return ChError_OK;
 }
 
@@ -551,11 +553,9 @@ static ChError doNoOpeningTable(ChessBoard* board, Properties* player){
         case ChError_OK:
             break;
         case ChError_CheckMate:
-             freeMoveList(info.list);
             return hr;
             break;
         case ChError_StaleMate:
-             freeMoveList(info.list);
             return hr;
             break;
         default:
@@ -596,8 +596,7 @@ static ChError doNoOpeningTable(ChessBoard* board, Properties* player){
             alpha=INIT_ALPHA;
             beta=INIT_BETA;            
         }
-      
-
+        
     
         /***********
          *STATISTICS
@@ -614,22 +613,9 @@ static ChError doNoOpeningTable(ChessBoard* board, Properties* player){
         info.quietNodes=0;
         info.movesPerIterationCalculated=0; 
         
-        if(overallBestScore>=MATE_SCORE||overallBestScore<=-MATE_SCORE)
+        if(overallBestScore>=MATE_SCORE)
             break;
         
-        if(overallBestScore==0){
-            //draw or checkmate/stalemate detection
-            long rep=probeRepetitionTable(&board->zobrist);
-            if(((rep>=3||board->repetitionMoves>=50)&&overallBestScore<=0)){
-                freeMoveList(info.list);
-                hr=ChError_RepetitionDraw;
-                return hr;
-            }
-            if((drawByMaterial(board, WHITE)&&drawByMaterial(board, BLACK))){
-                freeMoveList(info.list);
-                return ChError_MaterialDraw;
-            }
-        }
         
         //time check;
         if((float)(clock()-startTime)/CLOCKS_PER_SEC*2>timeForThisMove ){
@@ -637,22 +623,10 @@ static ChError doNoOpeningTable(ChessBoard* board, Properties* player){
         }
         
     }
-    //draw or checkmate/stalemate detection
-    long rep=probeRepetitionTable(&board->zobrist);
-    if(((rep>=3||board->repetitionMoves>=50)&&overallBestScore<=0)){
-         freeMoveList(info.list);
-        hr=ChError_RepetitionDraw;
-        return hr;
-    }
-    if((drawByMaterial(board, WHITE)&&drawByMaterial(board, BLACK))){
-         freeMoveList(info.list);
-        return ChError_MaterialDraw;
-    }
-
+        
     //do move
     moveToChar(&bestFinishedMove, charMove);
     printf("move %s\n",charMove);
-    assert(bestFinishedMove.value!=0);
     doMove(board, &bestFinishedMove);
     
     printf("#Found best move %s in %f sec out of %lu nodes having %f nodes/sec.\n",charMove,((float)(clock()-time)/CLOCKS_PER_SEC),info.allMovesCalculated,(info.allMovesCalculated+info.quietNodes)/((float)(clock()-time)/CLOCKS_PER_SEC));
@@ -662,24 +636,30 @@ static ChError doNoOpeningTable(ChessBoard* board, Properties* player){
     printBoardE(board);
     
     
-        
+    //draw or checkmate/stalemate detection
+    long rep=probeRepetitionTable(&board->zobrist);
+    if(((rep>=3||board->repetitionMoves>=50)&&overallBestScore<0)){
+        hr=ChError_RepetitionDraw;
+        return hr;
+    }
+    if((drawByMaterial(board, WHITE)&&drawByMaterial(board, BLACK))){
+        return ChError_MaterialDraw;
+    }
+    
     hr=generateMoves(board, board->colorToPlay, &list,&info);
     switch (hr){
         case ChError_OK:
             break;
         case ChError_CheckMate:
-             freeMoveList(info.list);
             return hr;
             break;
         case ChError_StaleMate:
-             freeMoveList(info.list);
             return hr;
             break;
         default:
             printError(hr);
             break;
     }
-    freeMoveList(info.list);
     return hr;
 }
 
@@ -687,7 +667,7 @@ ChError doAi(ChessBoard* board, Properties* player){
  
     if(player->useOpeningTable&&useOpeningTable){
         return UseOpeningTable(board,player);
-    }else{    
+    }else{
         return doNoOpeningTable(board,player);
     }
     return ChError_OK;

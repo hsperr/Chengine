@@ -54,7 +54,7 @@ ChError clearEvalTable(){
 ChError initEvalTable(long size){
     evalTableSize=size;
     
-    evalTable=malloc(evalTableSize*sizeof(EvalEntry));
+    evalTable=(EvalEntry*) malloc(evalTableSize*sizeof(EvalEntry));
     if(!evalTable)
         return ChError_Resources;
     clearEvalTable();
@@ -156,7 +156,7 @@ static u_int64_t rand64(void)
 }
 
 ChError initRepetitionTable(void){
-    repetitionTable=malloc(repTableSize*sizeof(RepEntry));
+    repetitionTable=(RepEntry*) malloc(repTableSize*sizeof(RepEntry));
     if(!repetitionTable)
         return ChError_Resources;
     memset(repetitionTable,0,sizeof(RepEntry)*repTableSize);
@@ -167,7 +167,7 @@ ChError initRepetitionTable(void){
 
 ChError initHashTable(long sizeInMb){
     hashTableSize=sizeInMb;
-    srand(17L);
+   // srand(17L);
     
      BLACKTOPLAY=rand64();
    
@@ -187,7 +187,7 @@ ChError initHashTable(long sizeInMb){
         enPassant[i]=rand64();
     }
     
-    hashTable=malloc(hashTableSize*sizeof(TableEntry));
+    hashTable=(TableEntry*) malloc(hashTableSize*sizeof(TableEntry));
     if(!hashTable)
         return ChError_Resources;
     

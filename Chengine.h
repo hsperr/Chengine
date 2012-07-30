@@ -23,10 +23,15 @@
 #define min( a, b ) ( ((a) < (b)) ? (a) : (b) )
 #endif
 
+#ifdef _MSC_VER
+typedef __int64 int64_t;
+typedef unsigned __int64 u_int64_t;
+typedef int int32_t;
+typedef unsigned int u_int32_t;
+#endif
 
 typedef unsigned char PIECE;
 typedef enum Color {WHITE=0,BLACK=1}Color;
-
 
 typedef enum {
     ChError_OK = 0,
@@ -55,7 +60,7 @@ typedef struct PieceInfo{
     int score;
 }PieceInfo;
 
-enum MoveType{
+typedef enum {
     NORMAL=0x0,
     PAWNDOUBLE,
     PROMOTION,

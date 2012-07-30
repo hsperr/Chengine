@@ -73,6 +73,7 @@ void checkForInput(Game* game){
                 game->Player[WHITE].isAi=0;
             }else if(strncmp(input,"go",2)==0){
                 game->Player[game->board.colorToPlay].isAi=1;
+                game->Player[game->board.colorToPlay ^ 1].isAi=0;
                 return;
                 //leave force mode, set engine to play color that is on move
                 //start thinking and clock

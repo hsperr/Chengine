@@ -258,8 +258,8 @@ int getGamePhase(ChessBoard* board){
     int materialCount=0;
     //no pawns
     for(int i=1; i<6;i++){
-        materialCount+=board->playerScores[WHITE].pieceCounts[i];
-        materialCount+=board->playerScores[BLACK].pieceCounts[i];
+        materialCount+=board->playerScores[WHITE].pieceCounts[i]*2;
+        materialCount+=board->playerScores[BLACK].pieceCounts[i]*2;
         //weigth queens and rooks
         //rooks
         if(i==4){
@@ -275,6 +275,9 @@ int getGamePhase(ChessBoard* board){
         }
             
     }
+    materialCount+=board->playerScores[WHITE].pieceCounts[0];
+    materialCount+=board->playerScores[BLACK].pieceCounts[0];
+    
     
     if(materialCount<=14) board->phase=EndGame;
     else board->phase=Opening;
@@ -1276,7 +1279,7 @@ int isCheck(ChessBoard* board, Color color){
     return isAttacked(board, myPieces[0].location, color==WHITE?BLACK:WHITE);
     
 }
-static ChError addMove(ChessBoard* board,int from, int to, PIECE promotion, enum MoveType type, MoveList* list, int usePins, Pin* pinnedPieces,SearchInformation* info){
+static ChError addMove(ChessBoard* board,int from, int to, PIECE promotion, MoveType type, MoveList* list, int usePins, Pin* pinnedPieces,SearchInformation* info){
     ChError hr=ChError_OK;
 
     //if piece is pinned it can only move if it hits the pinning piece
@@ -1763,11 +1766,13 @@ static int getMoveScore(Move* m1, SearchInformation* info){
     return score;
 }
 
-static int compareMoves(void* b,const void* mv1, const void* mv2){
+static SearchInformation * g_info = NULL;
+
+static int compareMoves(const void* mv1, const void* mv2){
     
     Move* move1=(Move*)mv1;
     Move* move2=(Move*)mv2;
-    SearchInformation* info =(SearchInformation*)b;
+    SearchInformation* info = g_info;
     
     int move1Score=getMoveScore(move1, info);
     int move2Score=getMoveScore(move2, info);
@@ -1791,19 +1796,20 @@ ChError generateSortedMoves(ChessBoard* board,enum Color color, MoveList* moveLi
     
     
     Move* move=&moveList->array[nextFree];
-    qsort_r(move, moveList->nextFree-nextFree, sizeof(Move), info, &compareMoves);
-    
+    g_info = info;
+    qsort(move, moveList->nextFree-nextFree, sizeof(Move), compareMoves);
+    g_info = NULL;
+
     //  printBoardE(board);
     //  printMoveListFromOffset(moveList, nextFree);
     
-    
     return hr;
 }
-static int compareCaptures(void* b, const void* mv1, const void* mv2){
+static int compareCaptures(const void* mv1, const void* mv2){
     
     Move* move1=(Move*)mv1;
     Move* move2=(Move*)mv2;
-    SearchInformation* info =(SearchInformation*)b;
+    SearchInformation* info = g_info;
     
     int m1score=-110;
     int m2score=-110;
@@ -1840,7 +1846,9 @@ ChError generateCaptures(ChessBoard* board,enum Color color, MoveList* moveList,
     
     
     Move* move=&moveList->array[nextFree];
-    qsort_r(move, moveList->nextFree-nextFree, sizeof(Move), info, &compareCaptures);
+    g_info = info;
+    qsort(move, moveList->nextFree-nextFree, sizeof(Move), compareCaptures);
+    g_info = NULL;
     
     int capturesMoves=nextFree;
     for(;capturesMoves<moveList->nextFree;capturesMoves++){

@@ -24,7 +24,7 @@ long testPositions (ChessBoard* board)
             readFENString(board, line);
             //printBoardE(board);
             
-            doAiTest(board, 8,&info);
+            doAiTest(board, 7,&info);
             
             
             

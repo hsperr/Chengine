@@ -242,7 +242,8 @@ uint64 OpeningBookHash(char *fen){
     char ep_square_s[2+1]; 
     char board[8][8];
     char c;
-    int p,r,f,i,p_enc;
+    size_t p;
+    int r,f,i,p_enc;
     uint64 key=0;
     sscanf(fen,"%72s %c %4s %2s",
            board_s,
@@ -360,13 +361,13 @@ int entry_from_file(FILE *f, entry_t *entry){
     entry->key=r;
     ret=int_from_file(f,2,&r);
     if(ret) return 1;
-    entry->move=r;
+    entry->move=(uint16) r;
     ret=int_from_file(f,2,&r);
     if(ret) return 1;
-    entry->weight=r;
+    entry->weight=(uint16) r;
     ret=int_from_file(f,4,&r);
     if(ret) return 1;
-    entry->learn=r;
+    entry->learn=(uint32) r;
     return 0;
 }
 
@@ -473,7 +474,7 @@ Move openBookAndGetNextMove(char* file_name, uint64* key){
     }
     
     double weightForChoosing=0;
-    srand(clock());
+   // srand(clock());
     double randomNumber=(double)rand()/RAND_MAX;
     for(i=0;i<count;i++){
         move_to_string(move_s,entries[i].move);
@@ -501,7 +502,7 @@ Move openBookAndGetNextMove(char* file_name, uint64* key){
         
         weightForChoosing+=((double) entries[i].weight/ (double) total_weight);
         
-        if(weightForChoosing>randomNumber)
+       if(weightForChoosing>randomNumber)
             break;
     }
     return lastChosen;

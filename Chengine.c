@@ -11,8 +11,8 @@
 
 ChError addToMoveList(MoveList* moveList, Move* move){
     if(moveList->nextFree==moveList->alloc){
-        int alloc = max(512, moveList->alloc * 2);
-        Move* newPtr= realloc(moveList->array, alloc * sizeof(Move));
+        int alloc = max(2048, moveList->alloc * 2);
+        Move* newPtr = (Move*) realloc(moveList->array, alloc * sizeof(Move));
         if(newPtr==NULL)
             return ChError_Resources;
         moveList->array=newPtr;

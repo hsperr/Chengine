@@ -17,11 +17,13 @@ int main (int argc, const char * argv[])
     ChError hr;    
     setbuf(stdout, NULL);
     setbuf(stdin, NULL);
-    
+    srand ( time(NULL) );
     Game newGame;
     initHashTable(65536*2*2*2*2*2*2);
     initRepetitionTable();
     initEvalTable(65536*2*2*2*2*2*2);
+    
+
   
     
     if((hr=initBoard(&newGame.board))){
@@ -40,21 +42,18 @@ int main (int argc, const char * argv[])
     newGame.isRunning=1;
     
     newGame.Player[WHITE].depth=200;
-    newGame.Player[WHITE].timelimit=9000;
-    newGame.Player[WHITE].isAi=1;
+    newGame.Player[WHITE].timelimit=30000;
+    newGame.Player[WHITE].isAi=0;
     newGame.Player[WHITE].useOpeningTable=1;
     
     newGame.Player[BLACK].depth=200;
-    newGame.Player[BLACK].timelimit=9000;
-    newGame.Player[BLACK].isAi=1;
+    newGame.Player[BLACK].timelimit=30000;
+    newGame.Player[BLACK].isAi=0;
     newGame.Player[BLACK].useOpeningTable=1;
     
 
-
- 
-    
     //readFENString(&newGame.board, "3r1k2/4npp1/1ppr3p/p6P/P2PPPP1/1NR5/5K2/2R5 w - - 0 0");
-    //printf("Evaluate: %d\n",evaluate(&newGame.board));
+    printf("Evaluate: %d\n",evaluate(&newGame.board));
     printBoardE(&newGame.board);
     while(newGame.isRunning){
         if(newGame.Player[newGame.board.colorToPlay].isAi){
@@ -83,6 +82,12 @@ int main (int argc, const char * argv[])
                     newGame.Player[BLACK].isAi=0;
                     newGame.Player[WHITE].isAi=0;
                    
+                    break;
+                case ChError_MaterialDraw:
+                    printf("1/2-1/2 {Material Draw}\n");
+                    newGame.Player[BLACK].isAi=0;
+                    newGame.Player[WHITE].isAi=0;
+                    
                     break;
 
                 default:
