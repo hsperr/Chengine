@@ -10,7 +10,7 @@
 
 long testPositions (ChessBoard* board)
 {
-    static const char input[] = "/Users/henningsperr/Desktop/Chess/chen/Chengine/ChessPositions.txt";
+    static const char input[] = "ChessPositions.txt";
     
     FILE *file   = fopen ( input, "r" );
     long time=clock();

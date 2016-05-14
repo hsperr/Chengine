@@ -494,7 +494,7 @@ static ChError UseOpeningTable(ChessBoard* board, Properties* player){
     getFenString(board, fenString);
     uint64 openingHash=OpeningBookHash(fenString);
     Move openingMove;
-    openingMove=openBookAndGetNextMove("/Users/henningsperr/Desktop/Chess/chen/Chengine/book.bin", &openingHash);
+    openingMove=openBookAndGetNextMove("book.bin", &openingHash);
     if(openingMove.from!=openingMove.to){
         //valid move
         //move type

@@ -10,8 +10,6 @@
 #include "OpeningBook.h"
 #include "TestFramework.h"
 
-
-
 int main (int argc, const char * argv[])
 {
     ChError hr;    
